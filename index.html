@@ -767,6 +767,113 @@ async function loadFromCloud(split) {
   return null;
 }
 
+// ── Cloud sync: History & Körpergewicht ─────────────────────────
+
+async function saveWorkoutSessionToCloud(entry) {
+  if (!sb) return;
+  try {
+    const { data: session, error: sErr } = await sb
+      .from('workout_sessions')
+      .insert({
+        date: entry.date, split: entry.split, duration: entry.duration,
+        total_sets: entry.totalSets, total_volume: entry.totalVolume
+      })
+      .select('id').single();
+    if (sErr) throw sErr;
+    const rows = entry.exercises.map(ex => ({
+      session_id: session.id, name: ex.name, weight: ex.weight,
+      weights: ex.weights || null, weight_dropped: ex.weightDropped || false,
+      sets_done: ex.done, sets_total: ex.total, volume: ex.volume
+    }));
+    if (rows.length) await sb.from('workout_exercises').insert(rows);
+  } catch(e) { console.error('Session cloud save:', e); }
+}
+
+async function saveBodyWeightToCloud(date, weight) {
+  if (!sb) return;
+  try { await sb.from('bodyweight_logs').upsert({ date, weight }, { onConflict: 'date' }); } catch(e) {}
+}
+
+async function savePrevSessionToCloud() {
+  if (!sb) return;
+  try {
+    await sb.from('workouts').upsert({
+      id: 'prev_sessions', data: JSON.stringify(prevSession), updated_at: new Date().toISOString()
+    });
+  } catch(e) {}
+}
+
+async function syncFromCloud() {
+  if (!sb) return;
+  let changed = false;
+
+  // ── Workout-Verlauf ───────────────────────────────────────────
+  try {
+    const { data: sessions, error } = await sb
+      .from('workout_sessions')
+      .select('id, date, split, duration, total_sets, total_volume, workout_exercises(name, weight, weights, weight_dropped, sets_done, sets_total, volume)')
+      .order('date', { ascending: false })
+      .limit(50);
+    if (!error && sessions) {
+      const cloudHistory = sessions.map(s => ({
+        date: s.date, split: s.split, duration: s.duration,
+        totalSets: s.total_sets, totalVolume: s.total_volume,
+        exercises: (s.workout_exercises || []).map(ex => ({
+          name: ex.name, weight: ex.weight, weights: ex.weights,
+          weightDropped: ex.weight_dropped, done: ex.sets_done, total: ex.sets_total, volume: ex.volume
+        }))
+      }));
+      const localHistory = loadWorkoutHistory();
+      const cloudDates = new Set(cloudHistory.map(h => h.date));
+      // Lokale Einträge die noch nicht in der Cloud sind → hochladen
+      for (const e of localHistory.filter(h => !cloudDates.has(h.date))) {
+        await saveWorkoutSessionToCloud(e);
+      }
+      // Merge: Cloud + lokale Extras, nach Datum sortiert
+      const localOnly = localHistory.filter(h => !cloudDates.has(h.date));
+      const merged = [...cloudHistory, ...localOnly]
+        .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50);
+      try { localStorage.setItem('gym_history', JSON.stringify(merged)); } catch(e) {}
+      changed = true;
+    }
+  } catch(e) { console.error('History sync:', e); }
+
+  // ── Körpergewicht ─────────────────────────────────────────────
+  try {
+    const { data: bwRows, error } = await sb
+      .from('bodyweight_logs').select('date, weight').order('date', { ascending: true });
+    if (!error && bwRows) {
+      const cloudBW = bwRows.map(d => ({ date: d.date, weight: d.weight }));
+      const localBW = loadBodyWeightData();
+      const cloudDates = new Set(cloudBW.map(d => d.date));
+      for (const e of localBW.filter(d => !cloudDates.has(d.date))) {
+        await saveBodyWeightToCloud(e.date, e.weight);
+      }
+      const localOnly = localBW.filter(d => !cloudDates.has(d.date));
+      const merged = [...cloudBW, ...localOnly].sort((a, b) => a.date.localeCompare(b.date));
+      try { localStorage.setItem('gym_bodyweight', JSON.stringify(merged)); } catch(e) {}
+      changed = true;
+    }
+  } catch(e) { console.error('BW sync:', e); }
+
+  // ── Vorherige Session (für Reps-Hints) ───────────────────────
+  try {
+    const { data, error } = await sb.from('workouts').select('data').eq('id', 'prev_sessions').single();
+    if (!error && data) {
+      const cloudPrev = JSON.parse(data.data);
+      // Cloud-Splits haben Vorrang; lokale Splits die in Cloud fehlen bleiben erhalten
+      prevSession = { ...prevSession, ...cloudPrev };
+      try { localStorage.setItem('gym_prev_session', JSON.stringify(prevSession)); } catch(e) {}
+    }
+  } catch(e) {}
+
+  if (changed) {
+    renderHistory();
+    renderExerciseProgressBoard();
+    renderBodyWeight();
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────────────
 
 async function init() {
@@ -782,6 +889,7 @@ async function init() {
   requestNotif();
   updateProgressionAiBadge();
   document.getElementById('loadingScreen').classList.add('hidden');
+  syncFromCloud(); // Im Hintergrund mit Cloud synchronisieren
 }
 
 async function loadExercises(split) {
@@ -1034,12 +1142,14 @@ function togCard(i) {
 
 function updHead(i) {
   const ex = exercises[i], w = document.querySelectorAll('.swipe-wrapper')[i];
-  if (!w) return;
+  if (!ex || !w) return;
   const c = w.querySelector('.exercise-card');
-  const cc = ex.completedSets.filter(Boolean).length, ad = cc === ex.completedSets.length;
+  const cc = ex.completedSets.filter((d, j) => d && !ex.warmupSets[j]).length;
+  const totalWorking = ex.completedSets.filter((_, j) => !ex.warmupSets[j]).length;
+  const ad = totalWorking > 0 && cc === totalWorking;
   const wb = c.querySelector('.badge-weight'), pb = c.querySelector('.badge-progress'), rb = c.querySelector('.rest-type-badge');
   if (wb) wb.textContent = `${ex.weight} kg`;
-  if (pb) { pb.textContent = `${cc}/${ex.completedSets.length}`; pb.classList.toggle('done', ad); }
+  if (pb) { pb.textContent = `${cc}/${totalWorking}`; pb.classList.toggle('done', ad); }
   if (rb) rb.textContent = fmtRest(ex.restSec);
   c.classList.toggle('completed', ad);
 }
@@ -1118,6 +1228,10 @@ function exitRestEditMode(confirm) {
   if (confirm) {
     const secs = parseRestInput(input.value);
     if (secs !== null && secs >= 5 && secs <= 600) {
+      display.style.display = '';
+      sublabel.style.display = '';
+      input.style.display = 'none';
+      hint.style.display = 'none';
       clearInterval(restTimerInterval);
       startRest(secs);
       return;
@@ -1263,7 +1377,7 @@ function delSet(xi, si) {
   debouncedSave();
 }
 function moveEx(f, t) {
-  if (t < 0 || t >= exercises.length) return;
+  if (f < 0 || f >= exercises.length || t < 0 || t >= exercises.length) return;
   const it = exercises.splice(f, 1)[0]; exercises.splice(t, 0, it);
   renderExercises(); debouncedSave();
 }
@@ -1687,7 +1801,7 @@ function confirmAdd() {
   const w = parseFloat(document.getElementById('inputExWeight').value) || 0;
   const s = parseInt(document.getElementById('inputExSets').value) || 3;
   if (!n) { document.getElementById('inputExName').focus(); return; }
-  exercises.push({ name: n, weight: w, unilateral: false, restSec: DEFAULT_REST, reps: Array(s).fill(8), completedSets: Array(s).fill(false), warmupSets: Array(s).fill(false) });
+  exercises.push({ name: n, weight: w, unilateral: false, restSec: DEFAULT_REST, reps: Array(s).fill(8), completedSets: Array(s).fill(false), warmupSets: Array(s).fill(false), setWeights: Array(s).fill(null) });
   closeModal(); renderExercises(); debouncedSave();
 }
 function showConfirm(msg, cb, icon = '⚠️') {
@@ -1719,8 +1833,8 @@ function savePrevSession() {
   });
   const all = loadAllPrevSessions();
   all[currentSplit] = snap;
-  try { localStorage.setItem('gym_prev_session', JSON.stringify(all)); } catch(e) {}
-  prevSession = all;
+  try { localStorage.setItem('gym_prev_session', JSON.stringify(all)); prevSession = all; } catch(e) {}
+  savePrevSessionToCloud(); // Async fire-and-forget
 }
 
 // ── Bodyweight tracking ──────────────────────────────────────────
@@ -1735,6 +1849,7 @@ function saveBodyWeight(weight) {
   if (idx >= 0) data[idx].weight = weight; else data.push({ date: today, weight });
   data.sort((a, b) => a.date.localeCompare(b.date));
   try { localStorage.setItem('gym_bodyweight', JSON.stringify(data)); } catch(e) {}
+  saveBodyWeightToCloud(today, weight); // Async fire-and-forget
   renderBodyWeight();
 }
 function renderBodyWeight() {
@@ -1815,6 +1930,7 @@ function saveWorkoutHistory() {
   history.unshift(entry);
   if (history.length > 50) history.splice(50);
   try { localStorage.setItem('gym_history', JSON.stringify(history)); } catch(e) {}
+  saveWorkoutSessionToCloud(entry); // Async fire-and-forget
 }
 function loadWorkoutHistory() { try { return JSON.parse(localStorage.getItem('gym_history') || '[]'); } catch(e) { return []; } }
 function renderHistory() {
@@ -1964,7 +2080,7 @@ function getLocalProgressionRecommendation(ex) {
 
   // STEP 3 – 2-for-2 Rule (Pollock 1984):
   // Mind. 2 Sessions auf gleichem Gewicht, alle Sets in beiden abgeschlossen
-  const sessionsAtWeight = exHistory.filter(h => Math.abs(h.weight - ex.weight) < 0.01);
+  const sessionsAtWeight = exHistory.filter(h => Math.abs(h.weight - ex.weight) < 0.005);
   if (sessionsAtWeight.length < 2) {
     return { action: 'maintain', delta: 0, reason: 'Gewicht noch zu neu' };
   }
@@ -2009,7 +2125,7 @@ function renderExerciseProgressBoard() {
     .map(([name, sessions]) => {
       const weights = sessions.map(s => s.weight); // neueste zuerst
       const current = weights[0];
-      const sessionsAtCurrent = sessions.filter(s => Math.abs(s.weight - current) < 0.01).length;
+      const sessionsAtCurrent = sessions.filter(s => Math.abs(s.weight - current) < 0.005).length;
 
       // Letzter Gewichtsanstieg suchen
       let lastChangeText = '';
@@ -2079,8 +2195,9 @@ function setupEventListeners() {
     if (e.key === 'Escape') { restEditConfirmed = true; exitRestEditMode(false); }
   });
   document.getElementById('restEditInput').addEventListener('blur', () => {
-    if (!restEditConfirmed) exitRestEditMode(true);
+    const wasConfirmed = restEditConfirmed;
     restEditConfirmed = false;
+    if (!wasConfirmed) exitRestEditMode(true);
   });
   document.getElementById('btnAddExercise').addEventListener('click', openModal);
   document.getElementById('btnModalCancel').addEventListener('click', closeModal);
