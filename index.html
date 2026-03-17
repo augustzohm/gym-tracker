@@ -285,27 +285,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 @media(max-width:480px){.app{padding:0 12px 100px}.rest-time-center .rest-time{font-size:2.8rem}}
 
-/* ── Settings ───────────────────────────────────────── */
-.btn-settings{background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;transition:all .2s;flex-shrink:0}
-.btn-settings:hover{border-color:var(--accent);color:var(--accent)}
-.settings-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:3000;align-items:center;justify-content:center;padding:20px}
-.settings-modal.visible{display:flex;animation:fadeIn .2s ease}
-.settings-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:420px}
-.settings-panel-title{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:20px}
-.settings-field{margin-bottom:16px}
-.settings-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:1.5px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px;display:block}
-.settings-input{width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:.78rem;outline:none;letter-spacing:.5px}
-.settings-input:focus{border-color:var(--accent)}
-.settings-hint{font-size:.68rem;color:var(--text-muted);margin-top:5px;line-height:1.4}
-.settings-hint a{color:var(--accent);text-decoration:underline dotted}
-.settings-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
-.btn-settings-save{padding:9px 22px;background:var(--accent);border:none;border-radius:var(--radius-sm);color:#fff;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:opacity .2s}
-.btn-settings-save:active{opacity:.8}
-.btn-settings-cancel{padding:9px 16px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-secondary);font-family:'JetBrains Mono',monospace;font-size:.7rem;cursor:pointer;transition:all .2s}
-.btn-settings-cancel:hover{border-color:var(--text-secondary)}
-.settings-key-status{display:inline-flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:3px 8px;border-radius:4px;margin-top:4px}
-.settings-key-status.active{color:var(--success);background:var(--success-dim)}
-.settings-key-status.inactive{color:var(--text-muted);background:var(--bg-input)}
 
 /* ── Progressive Overload Board ──────────────────────── */
 .po-board{margin-top:24px;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)}
@@ -355,15 +334,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .set-prev-val{color:rgba(107,138,253,.7)}
 .warmup-weight-kg{opacity:1!important}
 
-/* ── AI Progression ─────────────────────────────────── */
-.prog-ai-badge{font-family:'JetBrains Mono',monospace;font-size:.58rem;padding:2px 7px;border-radius:4px;letter-spacing:.5px;background:rgba(107,138,253,.15);color:var(--accent);border:1px solid rgba(107,138,253,.2);vertical-align:middle;margin-left:6px}
-.prog-ai-loading{display:flex;align-items:center;gap:10px;padding:14px 0;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.5px}
-.prog-ai-dots{display:flex;gap:4px}
-.prog-ai-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:lp .9s ease-in-out infinite}
-.prog-ai-dot:nth-child(2){animation-delay:.18s}
-.prog-ai-dot:nth-child(3){animation-delay:.36s}
 .prog-reason{font-size:.68rem;color:var(--text-muted);margin-top:3px;font-style:italic;line-height:1.3}
-.prog-ai-error{padding:8px 0;font-size:.7rem;color:var(--warn);font-family:'JetBrains Mono',monospace;letter-spacing:.3px}
 .prog-item .btn-prog-accept.maintain{border-color:var(--warn)!important;color:var(--warn)!important}
 .prog-item .btn-prog-accept.deload{border-color:var(--danger)!important;color:var(--danger)!important}
 
@@ -444,25 +415,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   transform:scale(1) translateY(0);
 }
 
-/* ── Settings Modal ─────────────────────────────────── */
-.settings-modal{
-  display:flex;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .2s ease;
-}
-.settings-modal.visible{
-  opacity:1;
-  pointer-events:auto;
-}
-.settings-panel{
-  transform:scale(.95) translateY(-8px);
-  transition:transform .25s cubic-bezier(0.4,0,0.2,1);
-}
-.settings-modal.visible .settings-panel{
-  transform:scale(1) translateY(0);
-}
-
 /* ── Übungskarte: Aufklapp-Animation ────────────────── */
 .exercise-body{
   opacity:0;
@@ -493,28 +445,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <div class="app">
   <header class="header">
     <div class="logo">GYM</div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="workout-timer-display" id="workoutTimerDisplay">00:00</div>
-      <button class="btn-settings" onclick="openSettings()" title="Einstellungen">⚙</button>
-    </div>
+    <div class="workout-timer-display" id="workoutTimerDisplay">00:00</div>
   </header>
-
-  <!-- Settings Modal -->
-  <div class="settings-modal" id="settingsModal" onclick="if(event.target===this)closeSettings()">
-    <div class="settings-panel">
-      <div class="settings-panel-title">Einstellungen</div>
-      <div class="settings-field">
-        <label class="settings-label">Anthropic API Key</label>
-        <input type="password" class="settings-input" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false"/>
-        <div class="settings-hint">Für KI-gestützte Progressions-Analyse. Dein Key wird lokal gespeichert und nie übertragen.<br>→ <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a></div>
-        <div id="apiKeyStatus" class="settings-key-status inactive">● Kein Key gesetzt</div>
-      </div>
-      <div class="settings-actions">
-        <button class="btn-settings-cancel" onclick="closeSettings()">Abbrechen</button>
-        <button class="btn-settings-save" onclick="saveSettingsAndClose()">Speichern</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Bodyweight tracker -->
   <div class="bw-section">
@@ -558,8 +490,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <!-- Progression suggestions -->
   <div class="progression-card" id="progressionCard">
     <div class="progression-header">
-      <div class="progression-title">Progression<span id="progressionAiBadge" style="display:none" class="prog-ai-badge">KI</span></div>
-      <div class="progression-sub" id="progressionSub">Alle Sets abgeschlossen – bereit für mehr Gewicht?</div>
+      <div class="progression-title">Progression</div>
+      <div class="progression-sub">Alle Sets abgeschlossen – bereit für mehr Gewicht?</div>
     </div>
     <div id="progressionList"></div>
   </div>
@@ -887,7 +819,6 @@ async function init() {
   renderExerciseProgressBoard();
   renderBodyWeight();
   requestNotif();
-  updateProgressionAiBadge();
   document.getElementById('loadingScreen').classList.add('hidden');
   syncFromCloud(); // Im Hintergrund mit Cloud synchronisieren
 }
@@ -1464,179 +1395,7 @@ function showSummary() {
 
 // ── Progressive Overload ─────────────────────────────────────────
 
-let anthropicApiKey = localStorage.getItem('gym_anthropic_key') || '';
-
-function openSettings() {
-  const modal = document.getElementById('settingsModal');
-  const inp = document.getElementById('apiKeyInput');
-  const status = document.getElementById('apiKeyStatus');
-  inp.value = anthropicApiKey;
-  if (anthropicApiKey) {
-    status.textContent = '● Key aktiv';
-    status.className = 'settings-key-status active';
-  } else {
-    status.textContent = '● Kein Key gesetzt';
-    status.className = 'settings-key-status inactive';
-  }
-  modal.classList.add('visible');
-}
-
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('visible');
-}
-
-function saveSettingsAndClose() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  anthropicApiKey = key;
-  if (key) {
-    localStorage.setItem('gym_anthropic_key', key);
-  } else {
-    localStorage.removeItem('gym_anthropic_key');
-  }
-  closeSettings();
-  updateProgressionAiBadge();
-}
-
-function updateProgressionAiBadge() {
-  const badge = document.getElementById('progressionAiBadge');
-  const sub = document.getElementById('progressionSub');
-  if (!badge || !sub) return;
-  if (anthropicApiKey) {
-    badge.style.display = '';
-    sub.textContent = 'KI analysiert dein Training und empfiehlt die optimale Progression.';
-  } else {
-    badge.style.display = 'none';
-    sub.textContent = 'Alle Sets abgeschlossen – bereit für mehr Gewicht?';
-  }
-}
-
-async function analyzeProgressionWithAI(qualifying) {
-  const history = loadWorkoutHistory();
-
-  const exerciseData = qualifying.map(ex => {
-    // Verlauf der letzten Sessions für diese Übung
-    const exHistory = [];
-    for (const session of history.slice(1, 11)) {
-      const found = session.exercises?.find(e => e.name === ex.name);
-      if (found) {
-        exHistory.push({
-          date: new Date(session.date).toLocaleDateString('de-DE'),
-          topWeight: found.weight,
-          weightPattern: found.weights ? found.weights.join('→') : String(found.weight),
-          weightDropped: found.weightDropped || false,
-          sets: `${found.done}/${found.total}`,
-          volume: found.volume
-        });
-      }
-      if (exHistory.length >= 5) break;
-    }
-
-    const workingIndices = ex.reps.map((_, i) => i).filter(i => !ex.warmupSets[i]);
-    const workingReps = workingIndices.map(i => ex.unilateral
-      ? `${ex.reps[i].l}L/${ex.reps[i].r}R` : String(ex.reps[i]));
-    const workingWeights = workingIndices.map(i => ex.setWeights?.[i] ?? ex.weight);
-    const topSetWeight = workingWeights.length ? Math.max(...workingWeights) : ex.weight;
-    const repNums = workingIndices.map(i => ex.unilateral
-      ? (ex.reps[i].l + ex.reps[i].r) / 2 : ex.reps[i]);
-    const maxRep = repNums.length ? Math.max(...repNums) : 0;
-    const minRep = repNums.length ? Math.min(...repNums) : 0;
-    const repDropped = repNums.length > 1 && (maxRep - minRep) >= 2;
-    const weightDropped = workingWeights.some(w => w < topSetWeight);
-    return {
-      name: ex.name,
-      topSetWeight,
-      setWeightPattern: workingWeights.join('→'),  // z.B. "32.5→30→30"
-      weightDropped,                                // true = Gewicht zwischen Sets gefallen
-      todayReps: workingReps,
-      repsDropped: repDropped,
-      lowestRepSet: minRep,
-      history: exHistory
-    };
-  });
-
-  const prompt = `You are an evidence-based strength coach applying the Double Progression Model (Pollock 1984; NSCA guidelines; Schoenfeld 2017/2021 hypertrophy meta-analysis).
-
-For each exercise, decide: "increase", "maintain", or "deload".
-
-Each exercise has these fields:
-- topSetWeight: the heaviest weight used in any working set today
-- setWeightPattern: actual weight per set, e.g. "32.5→30→30" (shows if athlete dropped weight mid-workout)
-- weightDropped: true = athlete had to reduce weight for later sets (fatigue-induced drop)
-- repsDropped: true = rep count fell ≥2 between sets at same weight
-- lowestRepSet: lowest rep count in any working set
-- history: last 5 sessions with topWeight, weightPattern, weightDropped, sets completed
-
-═══ DECISION FRAMEWORK (apply in order) ═══
-
-STEP 1 — HARD GATES → immediate "maintain":
-• lowestRepSet < 6 → below hypertrophy rep range (Schoenfeld 2021); maintain
-• history has < 2 entries → insufficient data (NSCA standards)
-• repsDropped: true → rep decline signals maximal fatigue at this load
-
-STEP 2 — WEIGHT DROP ANALYSIS:
-• weightDropped: true TODAY → athlete could not sustain topSetWeight across all sets
-  → "maintain" at topSetWeight; the athlete's goal is to hold that top weight for ALL sets
-  → In reason: explain they should consolidate (hold all sets at topSetWeight) before increasing
-• If weightDropped: true in the LAST 2+ history sessions as well → pattern of fatigue-induced drops
-  → suggest "deload" to establish a consistent base
-
-STEP 3 — DELOAD CHECK:
-• 2+ of last 3 sessions: done < total (incomplete sets, ignoring warmups) → "deload"
-• delta for deload: −10% of topSetWeight, rounded to nearest 2.5 kg
-
-STEP 4 — DOUBLE PROGRESSION (2-for-2 rule, Pollock 1984) → "increase" only if ALL true:
-• weightDropped: false today (all sets at same weight)
-• repsDropped: false (consistent reps across sets)
-• lowestRepSet ≥ 6
-• topSetWeight unchanged for ≥ 2 sessions in history
-• Last 2 sessions at this topWeight: all sets completed AND weightDropped: false
-
-═══ WEIGHT INCREMENTS (NSCA loading guidelines) ═══
-• Isolation / single-joint (curls, extensions, flys, lateral raises, face pulls, crunches): +2.5 kg
-• Upper body compound (bench, row, overhead press, lat pulldown): +2.5 kg
-• Lower body / large compound (squat, leg press, deadlift, hip thrust, romanian, RDL, leg/seated curl, leg extension): +5 kg
-
-═══ OUTPUT FORMAT ═══
-Respond ONLY with a valid JSON array, no prose, no markdown:
-[{"name":"...", "delta": 0, "action":"maintain", "reason":"..."}]
-
-action: "increase" | "maintain" | "deload"
-delta: number (positive, 0, or negative)
-reason: ≤ 10 words, German — be specific: mention weight pattern if relevant (e.g. "32.5→30 Muster – erst alle Sets bei 32.5 halten")
-
-Exercise data:
-${JSON.stringify(exerciseData, null, 2)}`;
-
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': anthropicApiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-opus-4-6',
-      max_tokens: 1024,
-      thinking: { type: 'adaptive' },
-      output_config: { effort: 'low' },
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message || `HTTP ${resp.status}`);
-  }
-
-  const data = await resp.json();
-  const text = data.content.find(b => b.type === 'text')?.text || '';
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) throw new Error('Kein JSON in Antwort');
-  return JSON.parse(match[0]);
-}
-
-async function showProgressionSuggestions() {
+function showProgressionSuggestions() {
   const qualifying = exercises
     .map((ex, xi) => {
       const workingSets = ex.completedSets.filter((done, i) => !ex.warmupSets[i]);
@@ -1653,44 +1412,13 @@ async function showProgressionSuggestions() {
 
   if (!qualifying.length) { card.classList.remove('visible'); return; }
 
-  updateProgressionAiBadge();
   card.classList.add('visible');
-
-  if (anthropicApiKey) {
-    list.innerHTML = `<div class="prog-ai-loading">
-      <div class="prog-ai-dots"><div class="prog-ai-dot"></div><div class="prog-ai-dot"></div><div class="prog-ai-dot"></div></div>
-      KI analysiert dein Training…
-    </div>`;
-
-    try {
-      const aiResults = await analyzeProgressionWithAI(qualifying);
-      currentSuggestions = qualifying.map(ex => {
-        const ai = aiResults?.find(r => r.name?.toLowerCase() === ex.name.toLowerCase());
-        const delta = ai != null ? +ai.delta : 2.5;
-        const action = ai?.action || 'increase';
-        const reason = ai?.reason || null;
-        const suggested = +(ex.weight + delta).toFixed(2);
-        return { xi: ex.xi, name: ex.name, currentWeight: ex.weight, suggestedWeight: suggested, delta, action, reason };
-      });
-      renderProgressionItems(list);
-    } catch (err) {
-      console.error('AI progression error:', err);
-      list.innerHTML = `<div class="prog-ai-error">⚠ KI nicht erreichbar – lokale Analyse wird verwendet</div>`;
-      currentSuggestions = qualifying.map(ex => {
-        const rec = getLocalProgressionRecommendation(ex);
-        const suggested = +(ex.weight + rec.delta).toFixed(2);
-        return { xi: ex.xi, name: ex.name, currentWeight: ex.weight, suggestedWeight: suggested, delta: rec.delta, action: rec.action, reason: rec.reason };
-      });
-      setTimeout(() => renderProgressionItems(list), 2200);
-    }
-  } else {
-    currentSuggestions = qualifying.map(ex => {
-      const rec = getLocalProgressionRecommendation(ex);
-      const suggested = +(ex.weight + rec.delta).toFixed(2);
-      return { xi: ex.xi, name: ex.name, currentWeight: ex.weight, suggestedWeight: suggested, delta: rec.delta, action: rec.action, reason: rec.reason };
-    });
-    renderProgressionItems(list);
-  }
+  currentSuggestions = qualifying.map(ex => {
+    const rec = getLocalProgressionRecommendation(ex);
+    const suggested = +(ex.weight + rec.delta).toFixed(2);
+    return { xi: ex.xi, name: ex.name, currentWeight: ex.weight, suggestedWeight: suggested, delta: rec.delta, action: rec.action, reason: rec.reason };
+  });
+  renderProgressionItems(list);
 }
 
 function getTopSetWeightForEx(ex) {
