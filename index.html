@@ -1085,16 +1085,32 @@ function updHead(i) {
   c.classList.toggle('completed', ad);
 }
 
+function updSetWeightInputs(i) {
+  const ex = exercises[i];
+  const w = document.querySelectorAll('.swipe-wrapper')[i];
+  if (!w) return;
+  w.querySelectorAll('.set-weight-input').forEach(inp => {
+    const m = inp.id.match(/sw-\d+-(\d+)/);
+    if (!m) return;
+    const si = parseInt(m[1]);
+    const swVal = ex.setWeights?.[si];
+    inp.placeholder = ex.weight;
+    inp.classList.toggle('dropped', swVal !== null && swVal !== undefined && swVal < ex.weight);
+  });
+}
+
 function aW(i, d) {
   exercises[i].weight = Math.max(0, Math.min(999, +(exercises[i].weight + d).toFixed(2)));
   const w = document.querySelectorAll('.swipe-wrapper')[i];
   const inp = w.querySelector('.weight-value');
   if (inp) inp.value = exercises[i].weight;
+  updSetWeightInputs(i);
   updHead(i); debouncedSave();
 }
 function sW(i, v) {
   const p = parseFloat(v);
   exercises[i].weight = isNaN(p) ? 0 : Math.max(0, Math.min(999, +p.toFixed(2)));
+  updSetWeightInputs(i);
   updHead(i); debouncedSave();
 }
 function aRest(xi, delta) {
