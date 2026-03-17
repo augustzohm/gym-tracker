@@ -138,6 +138,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .set-swipe-wrapper.set-done .set-swipe-content{transform:none!important}
 .set-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border);transition:all .3s}
 .set-row-end{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.set-row.bilateral-set-row .set-row-end{flex:0 0 100%;justify-content:flex-end;padding-left:28px}
 .set-row.completed-set{border-color:var(--success);background:rgba(52,211,153,.03)}
 /* Warmup set style */
 .set-row.is-warmup{background:var(--warn-dim);border-color:rgba(245,193,108,.2)}
@@ -886,7 +887,7 @@ function renderExercises() {
       sh += `<div class="set-swipe-wrapper${isDone ? ' set-done' : ''}" data-ex="${xi}" data-set="${si}">
         <div class="set-delete-bg" onclick="delSet(${xi},${si})">LÖSCHEN</div>
         <div class="set-swipe-content">
-          <div class="set-row${isDone ? ' completed-set' : ''}${isWarmup ? ' is-warmup' : ''}">
+          <div class="set-row${isDone ? ' completed-set' : ''}${isWarmup ? ' is-warmup' : ''}${ex.unilateral ? ' bilateral-set-row' : ''}">
             <span class="set-number${isWarmup ? ' is-warmup' : ''}" onclick="togWarmup(${xi},${si})" title="Aufwärm-Set umschalten">${isWarmup ? 'W' : workingCounter}</span>
             <div class="set-row-body">
               <div class="reps-adjuster">${ri}</div>
