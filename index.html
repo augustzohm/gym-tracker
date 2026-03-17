@@ -136,7 +136,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .set-swipe-content.swiped{transform:translateX(-60px)}
 .set-swipe-wrapper.set-done .set-delete-bg{display:none}
 .set-swipe-wrapper.set-done .set-swipe-content{transform:none!important}
-.set-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border);transition:all .3s}
+.set-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-input);border-radius:var(--radius-sm);border:1px solid var(--border);transition:all .3s}
+.set-row-end{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .set-row.completed-set{border-color:var(--success);background:rgba(52,211,153,.03)}
 /* Warmup set style */
 .set-row.is-warmup{background:var(--warn-dim);border-color:rgba(245,193,108,.2)}
@@ -924,8 +925,10 @@ function renderExercises() {
               <div class="reps-adjuster">${ri}</div>
               ${prevHtml}
             </div>
-            ${warmupWeightHtml}
-            <button class="btn-complete-set ${btnClass}" onclick="cSet(${xi},${si})">${btnText}</button>
+            <div class="set-row-end">
+              ${warmupWeightHtml}
+              <button class="btn-complete-set ${btnClass}" onclick="cSet(${xi},${si})">${btnText}</button>
+            </div>
           </div>
         </div>
       </div>`;
@@ -1304,9 +1307,21 @@ function sSetWeight(xi, si, val) {
   if (!ex.setWeights) ex.setWeights = ex.reps.map(() => null);
   const v = parseFloat(val);
   const parsed = isNaN(v) || val.trim() === '' ? null : Math.max(0, +v.toFixed(2));
-  // Wenn gleich Übungsgewicht → kein Override nötig
-  ex.setWeights[si] = (parsed !== null && Math.abs(parsed - ex.weight) < 0.01) ? null : parsed;
-  // Visuelles Feedback auf dem Input direkt aktualisieren
+  const newW = (parsed !== null && Math.abs(parsed - ex.weight) < 0.01) ? null : parsed;
+  const oldW = ex.setWeights[si];
+  ex.setWeights[si] = newW;
+  // Cascade: alle nachfolgenden Working-Sets mit gleichem alten Gewicht übernehmen
+  for (let j = si + 1; j < ex.setWeights.length; j++) {
+    if (ex.warmupSets[j]) continue;
+    if (ex.setWeights[j] === oldW) {
+      ex.setWeights[j] = newW;
+      const jinp = document.getElementById(`sw-${xi}-${j}`);
+      if (jinp) {
+        jinp.value = newW !== null ? newW : ex.weight;
+        jinp.classList.toggle('dropped', newW !== null && newW < ex.weight);
+      }
+    } else break;
+  }
   const inp = document.getElementById(`sw-${xi}-${si}`);
   if (inp) inp.classList.toggle('dropped', ex.setWeights[si] !== null && ex.setWeights[si] < ex.weight);
   debouncedSave();
