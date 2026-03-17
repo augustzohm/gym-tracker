@@ -1575,16 +1575,24 @@ function savePrevSession() {
 // ── Bodyweight tracking ──────────────────────────────────────────
 
 function loadBodyWeightData() {
-  try { return JSON.parse(localStorage.getItem('gym_bodyweight') || '[]'); } catch(e) { return []; }
+  try {
+    const raw = JSON.parse(localStorage.getItem('gym_bodyweight') || '[]');
+    // Nur gültige Einträge: Gewicht zwischen 20 und 500 kg
+    return raw
+      .map(d => ({ date: d.date, weight: parseFloat(d.weight) }))
+      .filter(d => d.date && !isNaN(d.weight) && d.weight >= 20 && d.weight <= 500);
+  } catch(e) { return []; }
 }
 function saveBodyWeight(weight) {
+  const w = parseFloat(weight);
+  if (isNaN(w) || w < 20 || w > 500) return; // Ungültige Werte ignorieren
   const data = loadBodyWeightData();
   const today = new Date().toISOString().split('T')[0];
   const idx = data.findIndex(d => d.date === today);
-  if (idx >= 0) data[idx].weight = weight; else data.push({ date: today, weight });
+  if (idx >= 0) data[idx].weight = w; else data.push({ date: today, weight: w });
   data.sort((a, b) => a.date.localeCompare(b.date));
   try { localStorage.setItem('gym_bodyweight', JSON.stringify(data)); } catch(e) {}
-  saveBodyWeightToCloud(today, weight); // Async fire-and-forget
+  saveBodyWeightToCloud(today, w); // Async fire-and-forget
   renderBodyWeight();
 }
 function renderBodyWeight() {
@@ -1592,7 +1600,7 @@ function renderBodyWeight() {
   const today = new Date().toISOString().split('T')[0];
   const todayEntry = data.find(d => d.date === today);
   const inp = document.getElementById('bwInput');
-  if (inp && todayEntry) inp.value = todayEntry.weight;
+  if (inp && todayEntry) inp.value = parseFloat(todayEntry.weight).toFixed(1);
 
   const last14 = data.filter(d => (Date.now() - new Date(d.date).getTime()) / 86400000 <= 14);
   const statsEl = document.getElementById('bwStats');
