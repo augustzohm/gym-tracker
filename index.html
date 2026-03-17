@@ -910,7 +910,7 @@ function renderExercises() {
              <span class="warmup-weight-kg">kg</span>
            </div>`
         : `<div class="set-weight-wrap">
-             <input type="number" id="sw-${xi}-${si}" class="set-weight-input${swVal !== null && swVal !== undefined && Math.abs(swVal - ex.weight) > 0.01 ? ' dropped' : ''}" value="${swVal !== null && swVal !== undefined ? swVal : ''}" placeholder="${ex.weight}" step="0.5" min="0"
+             <input type="number" id="sw-${xi}-${si}" class="set-weight-input${swVal !== null && swVal !== undefined && Math.abs(swVal - ex.weight) > 0.01 ? ' dropped' : ''}" value="${swVal !== null && swVal !== undefined ? swVal : ex.weight}" step="0.5" min="0"
                oninput="sSetWeight(${xi},${si},this.value)" onchange="sSetWeight(${xi},${si},this.value)" onclick="this.select()" title="Set-Gewicht (leer = Übungsgewicht)"/>
              <span class="set-weight-kg">kg</span>
            </div>`;
@@ -1094,7 +1094,8 @@ function updSetWeightInputs(i) {
     if (!m) return;
     const si = parseInt(m[1]);
     const swVal = ex.setWeights?.[si];
-    inp.placeholder = ex.weight;
+    // Kein custom Gewicht → Basis-Gewicht als echten Wert anzeigen
+    if (swVal === null || swVal === undefined) inp.value = ex.weight;
     inp.classList.toggle('dropped', swVal !== null && swVal !== undefined && swVal < ex.weight);
   });
 }
