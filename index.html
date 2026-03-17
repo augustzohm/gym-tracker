@@ -1086,7 +1086,7 @@ function updHead(i) {
 }
 
 function aW(i, d) {
-  exercises[i].weight = Math.max(0, +(exercises[i].weight + d).toFixed(2));
+  exercises[i].weight = Math.max(0, Math.min(999, +(exercises[i].weight + d).toFixed(2)));
   const w = document.querySelectorAll('.swipe-wrapper')[i];
   const inp = w.querySelector('.weight-value');
   if (inp) inp.value = exercises[i].weight;
@@ -1094,7 +1094,7 @@ function aW(i, d) {
 }
 function sW(i, v) {
   const p = parseFloat(v);
-  exercises[i].weight = isNaN(p) ? 0 : Math.max(0, +p.toFixed(2));
+  exercises[i].weight = isNaN(p) ? 0 : Math.max(0, Math.min(999, +p.toFixed(2)));
   updHead(i); debouncedSave();
 }
 function aRest(xi, delta) {
@@ -1378,18 +1378,25 @@ function stopWorkout(show = true) {
   }
 }
 
+function fmtVolume(v) {
+  const r = Math.round(v);
+  if (r >= 1000) return (r / 1000).toFixed(1) + ' t';
+  return r + ' kg';
+}
+
 function showSummary() {
-  const e = Math.floor((Date.now() - workoutStartTime) / 1000);
+  const e = Math.floor((Date.now() - (workoutStartTime || Date.now())) / 1000);
   let ts = 0, tv = 0;
   exercises.forEach(ex => ex.completedSets.forEach((d, i) => {
     if (d && !ex.warmupSets[i]) {
       ts++;
-      tv += ex.weight * (ex.unilateral ? (ex.reps[i].l + ex.reps[i].r) / 2 : ex.reps[i]);
+      const w = ex.setWeights?.[i] ?? ex.weight;
+      tv += w * (ex.unilateral ? (ex.reps[i].l + ex.reps[i].r) / 2 : ex.reps[i]);
     }
   }));
   document.getElementById('summaryTime').textContent = `${Math.floor(e/60)} min`;
   document.getElementById('summarySets').textContent = ts;
-  document.getElementById('summaryVolume').textContent = Math.round(tv).toLocaleString();
+  document.getElementById('summaryVolume').textContent = fmtVolume(tv);
   document.getElementById('summary').classList.add('visible');
 }
 
@@ -1683,7 +1690,7 @@ function renderHistory() {
       <div class="history-entry-stats">
         <span class="history-stat">${h.duration < 60 ? '<1' : Math.floor(h.duration/60)}min</span>
         <span class="history-stat">${h.totalSets} Sets</span>
-        <span class="history-stat">${h.totalVolume.toLocaleString()} kg</span>
+        <span class="history-stat">${fmtVolume(h.totalVolume)}</span>
       </div>
       <div class="history-entry-exercises">${exList}</div>
     </div>`;
