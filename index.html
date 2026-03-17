@@ -216,23 +216,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .stat-box{text-align:center}
 .stat-value{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:var(--accent)}
 .stat-label{font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-/* Progression card */
-.progression-card{margin-top:16px;padding:16px;background:var(--bg-card);border:1px solid rgba(52,211,153,.3);border-radius:var(--radius);display:none}
-.progression-card.visible{display:block}
-.progression-header{margin-bottom:14px}
-.progression-title{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:2px;color:var(--success);text-transform:uppercase;margin-bottom:3px}
-.progression-sub{font-size:.82rem;color:var(--text-secondary)}
-.prog-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:10px}
-.prog-item:last-child{border-bottom:none;padding-bottom:0}
-.prog-item.applied{opacity:.35;pointer-events:none}
-.prog-item-info{flex:1;min-width:0}
-.prog-name{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.prog-weights{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-secondary);margin-top:2px}
-.prog-weights b{color:var(--success)}
-.prog-actions{display:flex;gap:6px;flex-shrink:0}
-.btn-prog-skip{padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:.8rem;cursor:pointer;transition:all .2s}
-.btn-prog-accept{padding:6px 14px;border-radius:6px;border:1px solid var(--success);background:var(--success-dim);color:var(--success);font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .2s}
-.btn-prog-accept:disabled,.btn-prog-skip:disabled{opacity:.3;cursor:not-allowed}
 
 /* ── Streak ─────────────────────────────────────────── */
 .streak-tracker{margin-top:24px;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)}
@@ -317,8 +300,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn-modal-confirm:hover{opacity:.9}
 .btn-confirm-cancel:hover{border-color:var(--text-secondary);color:var(--text-primary)}
 .btn-confirm-ok:hover{background:rgba(239,68,68,.22)}
-.btn-prog-skip:hover{border-color:var(--text-secondary);color:var(--text-secondary)}
-.btn-prog-skip:focus,.btn-prog-accept:focus{outline:2px solid var(--accent);outline-offset:2px}
 .btn-rest-action:focus{outline:2px solid var(--accent);outline-offset:2px}
 .btn-mini:hover{border-color:var(--text-secondary);color:var(--text-secondary)}
 .btn-mini:focus{outline:2px solid var(--accent);outline-offset:2px}
@@ -328,16 +309,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .streak-goal-btn:focus{outline:2px solid var(--accent);outline-offset:2px}
 
 /* ── Transitions ─────────────────────────────────────── */
-.prog-item{transition:opacity .3s ease}
 
 /* ── Kontrast-Fixes ──────────────────────────────────── */
 .rest-type-badge{color:var(--text-secondary)}
 .set-prev-val{color:rgba(107,138,253,.7)}
 .warmup-weight-kg{opacity:1!important}
 
-.prog-reason{font-size:.68rem;color:var(--text-muted);margin-top:3px;font-style:italic;line-height:1.3}
-.prog-item .btn-prog-accept.maintain{border-color:var(--warn)!important;color:var(--warn)!important}
-.prog-item .btn-prog-accept.deload{border-color:var(--danger)!important;color:var(--danger)!important}
 
 /* ═══════════════════════════════════════════════════════
    ANIMATION & ALIGNMENT OVERRIDES
@@ -427,7 +404,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 /* ── Post-Workout Karten Einblend ───────────────────── */
 .summary.visible{animation:fadeSlideIn .35s ease forwards}
-.progression-card.visible{animation:fadeSlideIn .35s ease forwards}
 .history-entry.expanded .history-entry-exercises{animation:fadeIn .2s ease}
 
 /* ── Formular-Ausrichtung: inputs in modal-row ──────── */
@@ -488,14 +464,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
   </div>
 
-  <!-- Progression suggestions -->
-  <div class="progression-card" id="progressionCard">
-    <div class="progression-header">
-      <div class="progression-title">Progression</div>
-      <div class="progression-sub">Alle Sets abgeschlossen – bereit für mehr Gewicht?</div>
-    </div>
-    <div id="progressionList"></div>
-  </div>
 
   <div class="streak-tracker">
     <div class="streak-header">
@@ -620,7 +588,6 @@ let restTimeLeft = 0, restStartTime = null, currentRestDuration = DEFAULT_REST, 
 let saveTimeout = null;
 let streakGoal = 4;
 let prevSession = {};       // { split: { exName: { weight, reps[] } } }
-let currentSuggestions = [];
 let confirmCallback = null;
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -1375,7 +1342,6 @@ function startWorkout() {
   document.getElementById('btnStart').disabled = true;
   document.getElementById('btnStop').disabled = false;
   document.getElementById('summary').classList.remove('visible');
-  document.getElementById('progressionCard').classList.remove('visible');
   document.getElementById('workoutTimerDisplay').classList.add('active');
   updateWD(); workoutTimerInterval = setInterval(updateWD, 500);
 }
@@ -1403,7 +1369,6 @@ function stopWorkout(show = true) {
     savePrevSession();
     saveWorkoutHistory();
     showSummary();
-    showProgressionSuggestions(); // async – fire and forget
     logStreak();
     renderHistory();
     renderExerciseProgressBoard();
@@ -1432,88 +1397,6 @@ function showSummary() {
   document.getElementById('summary').classList.add('visible');
 }
 
-// ── Progressive Overload ─────────────────────────────────────────
-
-function showProgressionSuggestions() {
-  const qualifying = exercises
-    .map((ex, xi) => {
-      const workingSets = ex.completedSets.filter((done, i) => !ex.warmupSets[i]);
-      if (workingSets.length === 0 || !workingSets.every(Boolean)) return null;
-      const workingIndices = ex.reps.map((_, i) => i).filter(i => !ex.warmupSets[i]);
-      const workingWeights = workingIndices.map(i => ex.setWeights?.[i] ?? ex.weight);
-      const topSetWeight = workingWeights.length ? Math.max(...workingWeights) : ex.weight;
-      return { xi, name: ex.name, weight: topSetWeight, reps: ex.reps, completedSets: ex.completedSets, warmupSets: ex.warmupSets, unilateral: ex.unilateral || false, setWeights: ex.setWeights };
-    })
-    .filter(Boolean);
-
-  const card = document.getElementById('progressionCard');
-  const list = document.getElementById('progressionList');
-
-  if (!qualifying.length) { card.classList.remove('visible'); return; }
-
-  card.classList.add('visible');
-  currentSuggestions = qualifying.map(ex => {
-    const rec = getLocalProgressionRecommendation(ex);
-    const suggested = +(ex.weight + rec.delta).toFixed(2);
-    return { xi: ex.xi, name: ex.name, currentWeight: ex.weight, suggestedWeight: suggested, delta: rec.delta, action: rec.action, reason: rec.reason };
-  });
-  renderProgressionItems(list);
-}
-
-function getTopSetWeightForEx(ex) {
-  const workingIndices = ex.reps.map((_, i) => i).filter(i => !ex.warmupSets[i]);
-  const weights = workingIndices.map(i => ex.setWeights?.[i] ?? ex.weight);
-  return weights.length ? Math.max(...weights) : ex.weight;
-}
-
-function renderProgressionItems(list) {
-  list.innerHTML = currentSuggestions.map((s, idx) => {
-    const isDeload = s.action === 'deload';
-    const isMaintain = s.action === 'maintain';
-    const col = isDeload ? 'var(--danger)' : isMaintain ? 'var(--warn)' : 'var(--success)';
-    const weightDisplay = s.delta > 0 ? `+${s.delta}` : s.delta < 0 ? `${s.delta}` : '±0';
-    const btnLabel = isMaintain ? '✓ halten' : `✓ ${weightDisplay} kg`;
-    const btnClass = isDeload ? 'deload' : isMaintain ? 'maintain' : '';
-    return `<div class="prog-item" id="prog-item-${idx}">
-      <div class="prog-item-info">
-        <div class="prog-name">${s.name}</div>
-        <div class="prog-weights">${s.currentWeight} kg → <b style="color:${col}">${s.suggestedWeight} kg</b></div>
-        ${s.reason ? `<div class="prog-reason">${s.reason}</div>` : ''}
-      </div>
-      <div class="prog-actions">
-        <button class="btn-prog-skip" onclick="skipProgression(${idx})">✗</button>
-        <button class="btn-prog-accept ${btnClass}" style="border-color:${col};color:${col}" onclick="applyProgression(${idx})">${btnLabel}</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function applyProgression(idx) {
-  const s = currentSuggestions[idx];
-  if (!s) return;
-  const ex = exercises[s.xi];
-  ex.weight = s.suggestedWeight;
-  // Per-Set Overrides löschen: neues Gewicht = neue Basis für alle Arbeitssätze
-  if (ex.setWeights) {
-    ex.setWeights = ex.setWeights.map((w, i) => ex.warmupSets[i] ? w : null);
-  }
-  const wrap = document.querySelectorAll('.swipe-wrapper')[s.xi];
-  const inp = wrap?.querySelector('.weight-value');
-  if (inp) inp.value = s.suggestedWeight;
-  updHead(s.xi);
-  debouncedSave();
-  const item = document.getElementById(`prog-item-${idx}`);
-  if (item) {
-    item.classList.add('applied');
-    item.querySelectorAll('button').forEach(b => b.disabled = true);
-    item.querySelector('.prog-weights').innerHTML = `<span style="color:var(--success)">✓ ${s.suggestedWeight} kg übernommen</span>`;
-  }
-}
-
-function skipProgression(idx) {
-  const item = document.getElementById(`prog-item-${idx}`);
-  if (item) { item.classList.add('applied'); item.querySelectorAll('button').forEach(b => b.disabled = true); }
-}
 
 // ── Rest timer ───────────────────────────────────────────────────
 
@@ -1800,78 +1683,6 @@ function renderStreak() {
 function loadStreakGoal() { try { return parseInt(localStorage.getItem('gym_streak_goal')) || 4; } catch(e) { return 4; } }
 function setStreakGoal(n) { streakGoal = n; localStorage.setItem('gym_streak_goal', n); renderStreak(); }
 
-// ── Local progression recommendation (Double Progression Model) ──
-// Basiert auf: Pollock 1984 "2-for-2 rule", NSCA Guidelines,
-// Schoenfeld 2017/2021 Hypertrophy Meta-Analysen
-
-function getLocalProgressionRecommendation(ex) {
-  const history = loadWorkoutHistory();
-  const exHistory = [];
-  // slice(1): aktuelle Session überspringen (wurde gerade gespeichert)
-  for (const session of history.slice(1, 12)) {
-    const found = session.exercises?.find(e => e.name === ex.name);
-    if (found) exHistory.push(found);
-    if (exHistory.length >= 5) break;
-  }
-
-  // STEP 1 – Hard Gates (NSCA: mind. 2 vorherige Sessions nötig)
-  if (exHistory.length < 2) {
-    return { action: 'maintain', delta: 0, reason: 'Zu wenig Verlaufsdaten' };
-  }
-
-  // Rep-Analyse der heutigen Session
-  const workingIdx = ex.reps.map((_, i) => i).filter(i => !ex.warmupSets[i]);
-  const repNums = workingIdx.map(i => ex.unilateral
-    ? (ex.reps[i].l + ex.reps[i].r) / 2 : ex.reps[i]);
-
-  if (repNums.length > 0) {
-    const maxRep = Math.max(...repNums);
-    const minRep = Math.min(...repNums);
-    if (maxRep - minRep >= 2) {
-      return { action: 'maintain', delta: 0, reason: 'Reps zwischen Sets zu ungleich' };
-    }
-    if (minRep < 6) {
-      return { action: 'maintain', delta: 0, reason: 'Reps zu niedrig (< 6)' };
-    }
-  }
-
-  // Weight-Drop-Check: falls heute Gewicht zwischen Sets gesunken ist → maintain
-  const workingWeights = workingIdx.map(i => ex.setWeights?.[i] ?? ex.weight);
-  const topW = workingWeights.length ? Math.max(...workingWeights) : ex.weight;
-  if (workingWeights.some(w => w < topW)) {
-    return { action: 'maintain', delta: 0, reason: 'Gewicht zwischen Sets gesenkt – erst alle Sets bei ' + topW + ' kg halten' };
-  }
-
-  // STEP 2 – Deload: 2 von 3 letzten Sessions unvollständig
-  const recentFailed = exHistory.slice(0, 3).filter(h => h.done < h.total);
-  if (recentFailed.length >= 2) {
-    const name = ex.name.toLowerCase();
-    const isLarge = name.includes('leg press') || name.includes('squat') ||
-                    name.includes('deadlift') || name.includes('hip thrust') ||
-                    name.includes('romanian') || name.includes('rdl');
-    const deloadDelta = isLarge ? -5 : -2.5;
-    return { action: 'deload', delta: deloadDelta, reason: 'Mehrere Sessions nicht abgeschlossen' };
-  }
-
-  // STEP 3 – 2-for-2 Rule (Pollock 1984):
-  // Mind. 2 Sessions auf gleichem Gewicht, alle Sets in beiden abgeschlossen
-  const sessionsAtWeight = exHistory.filter(h => Math.abs(h.weight - ex.weight) < 0.005);
-  if (sessionsAtWeight.length < 2) {
-    return { action: 'maintain', delta: 0, reason: 'Gewicht noch zu neu' };
-  }
-  const last2atWeight = sessionsAtWeight.slice(0, 2);
-  if (!last2atWeight.every(h => h.done >= h.total)) {
-    return { action: 'maintain', delta: 0, reason: 'Letzte Sessions nicht komplett' };
-  }
-
-  // Alle Kriterien erfüllt → Gewicht erhöhen
-  const n = ex.name.toLowerCase();
-  const isLargeCompound = n.includes('leg press') || n.includes('deadlift') || n.includes('squat') ||
-                           n.includes('hip thrust') || n.includes('romanian') || n.includes('rdl') ||
-                           n.includes('leg extension') || n.includes('leg curl');
-  const delta = isLargeCompound ? 5 : 2.5;
-  return { action: 'increase', delta, reason: '2-for-2 Regel erfüllt' };
-}
 
 // ── Progressive Overload Board ───────────────────────────────────
 
