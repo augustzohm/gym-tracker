@@ -725,13 +725,13 @@ async function syncFromCloud() {
         }))
       }));
       const localHistory = loadWorkoutHistory();
-      const cloudDates = new Set(cloudHistory.map(h => h.date));
+      const cloudTimes = new Set(cloudHistory.map(h => new Date(h.date).getTime()));
       // Lokale Einträge die noch nicht in der Cloud sind → hochladen
-      for (const e of localHistory.filter(h => !cloudDates.has(h.date))) {
+      for (const e of localHistory.filter(h => !cloudTimes.has(new Date(h.date).getTime()))) {
         await saveWorkoutSessionToCloud(e);
       }
       // Merge: Cloud + lokale Extras, nach Datum sortiert
-      const localOnly = localHistory.filter(h => !cloudDates.has(h.date));
+      const localOnly = localHistory.filter(h => !cloudTimes.has(new Date(h.date).getTime()));
       const merged = [...cloudHistory, ...localOnly]
         .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50);
       try { localStorage.setItem('gym_history', JSON.stringify(merged)); } catch(e) {}
@@ -1591,7 +1591,14 @@ function saveWorkoutHistory() {
   try { localStorage.setItem('gym_history', JSON.stringify(history)); } catch(e) {}
   saveWorkoutSessionToCloud(entry); // Async fire-and-forget
 }
-function loadWorkoutHistory() { try { return JSON.parse(localStorage.getItem('gym_history') || '[]'); } catch(e) { return []; } }
+function loadWorkoutHistory() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('gym_history') || '[]');
+    // Deduplizieren nach Zeitstempel (entfernt Duplikate durch Sync-Bug)
+    const seen = new Set();
+    return raw.filter(h => { const t = new Date(h.date).getTime(); if (seen.has(t)) return false; seen.add(t); return true; });
+  } catch(e) { return []; }
+}
 function renderHistory() {
   const history = loadWorkoutHistory();
   const el = document.getElementById('historyList');
