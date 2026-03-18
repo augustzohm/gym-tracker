@@ -98,8 +98,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .exercise-meta{display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:185px}
 .exercise-badge{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:2px 6px;border-radius:4px;letter-spacing:.5px}
 .badge-weight{background:var(--accent-dim);color:var(--accent)}
-.badge-weight.up{background:var(--success-dim);color:var(--success)}
-.badge-weight.down{background:rgba(239,68,68,.12);color:var(--danger)}
 .badge-progress{background:rgba(106,106,128,.15);color:var(--text-secondary)}
 .badge-progress.done{background:var(--success-dim);color:var(--success)}
 .badge-uni{background:var(--warn-dim);color:var(--warn);font-size:.6rem}
@@ -866,8 +864,6 @@ function renderExercises() {
     const totalWorking = ex.completedSets.filter((_, i) => !ex.warmupSets[i]).length;
     const ad = totalWorking > 0 && cc === totalWorking;
     const ub = ex.unilateral ? '<span class="exercise-badge badge-uni">L/R</span>' : '';
-    const prevW = (prevExercise[ex.name] || prevSession[currentSplit]?.[ex.name])?.weight;
-    const weightClass = prevW === undefined ? '' : ex.weight > prevW ? ' up' : ex.weight < prevW ? ' down' : '';
 
     // Arbeitssatz-Index (zählt nur nicht-Warmup-Sets) für korrekte Beschriftung
     let workingCounter = 0;
@@ -945,7 +941,7 @@ function renderExercises() {
             </div>
             <div class="exercise-meta">
               ${ub}
-              <span class="exercise-badge badge-weight${weightClass}">${ex.weight} kg</span>
+              <span class="exercise-badge badge-weight">${ex.weight} kg</span>
               <span class="rest-type-badge">${fmtRest(ex.restSec)}</span>
               <span class="exercise-badge badge-progress ${ad?'done':''}">${cc}/${totalWorking}</span>
               <span class="chevron">&#9662;</span>
@@ -1593,7 +1589,7 @@ function renderBodyWeight() {
     const fmtKg = n => (+n).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     const trend = last14.length >= 2 ? last14[last14.length-1].weight - last14[0].weight : null;
     const trendHtml = trend !== null
-      ? `<span class="bw-stat" style="color:${trend > 0 ? 'var(--danger)' : trend < 0 ? 'var(--success)' : 'var(--text-muted)'}">
+      ? `<span class="bw-stat" style="color:${trend > 0 ? 'var(--success)' : trend < 0 ? 'var(--danger)' : 'var(--text-muted)'}">
           ${trend >= 0 ? '+' : ''}${fmtKg(trend)} kg <b>Trend</b></span>`
       : '';
     statsEl.innerHTML = `
