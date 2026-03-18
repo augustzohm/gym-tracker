@@ -906,19 +906,22 @@ function buildDefaultExercises(split) {
 async function loadExercises(split) {
   const cd = await loadFromCloud(split);
   const src = cd || DEFAULT_DATA[split];
+  const fromCloud = !!cd; // nur echte Cloud/localStorage-Daten migrieren, nicht DEFAULT_DATA
 
   // Migration: altes Format (Array von Objekten) → globalExercises befüllen
-  if (src.length > 0 && typeof src[0] === 'object' && src[0].name) {
+  // IMMER überschreiben: alte Template-Daten sind die echten User-Daten,
+  // sie gewinnen über versehentlich gespeicherte Default-Werte in globalExercises
+  if (fromCloud && src.length > 0 && typeof src[0] === 'object' && src[0].name) {
+    const now = Date.now();
     src.forEach(ex => {
-      if (!globalExercises[ex.name]) {
-        const sets = ex.sets || [8, 8, 8];
-        globalExercises[ex.name] = {
-          weight: ex.weight || 0, sets, unilateral: ex.unilateral || false,
-          restSec: ex.restSec || DEFAULT_REST,
-          warmupSets: ex.warmupSets || sets.map(() => false),
-          setWeights: ex.setWeights || sets.map(() => null)
-        };
-      }
+      const sets = ex.sets || [8, 8, 8];
+      globalExercises[ex.name] = {
+        weight: ex.weight || 0, sets, unilateral: ex.unilateral || false,
+        restSec: ex.restSec || DEFAULT_REST,
+        warmupSets: ex.warmupSets || sets.map(() => false),
+        setWeights: ex.setWeights || sets.map(() => null),
+        savedAt: now
+      };
     });
     try { localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises)); } catch(e) {}
     const newTemplate = src.map(ex => ex.name);
