@@ -600,7 +600,6 @@ let saveTimeout = null;
 let streakGoal = 4;
 let prevSession = {};       // { split: { exName: { weight, reps[] } } }
 let prevExercise = {};      // { exName: { weight, reps[] } } – übungsübergreifend, Split-unabhängig
-let exerciseCache = {};     // { exName: vollständiger Zustand } – immer aktuell, Sync-Quelle
 let confirmCallback = null;
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -665,10 +664,7 @@ async function saveToCloud() {
     showSync('saved', 'SAVED ✓');
   } catch(err) { showSync('saved', 'LOCAL ✓'); }
 }
-function debouncedSave() {
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => { updateExerciseCache(); saveToCloud(); syncExercisesToOtherSplits(); }, 800);
-}
+function debouncedSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToCloud, 800); }
 async function loadFromCloud(split) {
   if (sb) {
     try {
@@ -808,7 +804,6 @@ async function init() {
   streakGoal = loadStreakGoal();
   prevSession = loadAllPrevSessions();
   prevExercise = loadPrevExercise();
-  exerciseCache = loadExerciseCache();
   // Bootstrap: Falls prevExercise noch leer ist, aus allen Splits von prevSession aufbauen
   if (Object.keys(prevExercise).length === 0 && Object.keys(prevSession).length > 0) {
     Object.values(prevSession).forEach(splitData => {
@@ -819,8 +814,6 @@ async function init() {
     try { localStorage.setItem('gym_prev_exercise', JSON.stringify(prevExercise)); } catch(e) {}
   }
   await loadExercises(currentSplit);
-  // Cache mit dem ersten geladenen Split befüllen falls noch leer
-  if (Object.keys(exerciseCache).length === 0) updateExerciseCache();
   renderExercises();
   setupEventListeners();
   renderStreak();
@@ -846,21 +839,6 @@ async function loadExercises(split) {
       warmupSets: ex.sets.map((_, i) => (ex.warmupSets || [])[i] || false),
       setWeights: ex.sets.map((_, i) => (ex.setWeights || [])[i] ?? null)
     };
-  });
-  // Cache anwenden: überschreibt Cloud-Daten mit lokal bekanntem Zustand
-  exercises.forEach(ex => {
-    const c = exerciseCache[ex.name];
-    if (!c) return;
-    ex.weight = c.weight;
-    ex.restSec = c.restSec;
-    ex.unilateral = c.unilateral;
-    const u = c.unilateral;
-    ex.reps = u
-      ? c.sets.map(s => Array.isArray(s) ? { l: s[0] || 8, r: s[1] || 8 } : { l: s || 8, r: s || 8 })
-      : c.sets.map(r => Array.isArray(r) ? r[0] : (r || 8));
-    ex.warmupSets = [...c.warmupSets];
-    ex.setWeights = [...c.setWeights];
-    ex.completedSets = ex.reps.map(() => false);
   });
 }
 
@@ -1366,8 +1344,6 @@ async function switchSplit(s) {
   await _doSwitchSplit(s);
 }
 async function _doSwitchSplit(s) {
-  // Cache sofort aktualisieren bevor der Split wechselt – nicht auf den 800ms-Debounce warten
-  updateExerciseCache();
   currentSplit = s;
   document.querySelectorAll('.split-btn').forEach(b => b.classList.toggle('active', b.dataset.split === s));
   await loadExercises(s); renderExercises();
@@ -1412,7 +1388,6 @@ function stopWorkout(show = true) {
   restMinimized = false;
   if (show) {
     savePrevSession();
-    syncExercisesToOtherSplits();
     saveWorkoutHistory();
     showSummary();
     logStreak();
@@ -1538,64 +1513,6 @@ function loadPrevExercise() {
   try { return JSON.parse(localStorage.getItem('gym_prev_exercise') || '{}'); } catch(e) { return {}; }
 }
 
-function loadExerciseCache() {
-  try { return JSON.parse(localStorage.getItem('gym_exercise_cache') || '{}'); } catch(e) { return {}; }
-}
-
-function updateExerciseCache() {
-  exercises.forEach(ex => {
-    exerciseCache[ex.name] = {
-      weight: ex.weight,
-      sets: ex.unilateral ? ex.reps.map(r => [r.l, r.r]) : [...ex.reps],
-      unilateral: ex.unilateral,
-      restSec: ex.restSec || DEFAULT_REST,
-      warmupSets: [...(ex.warmupSets || [])],
-      setWeights: [...(ex.setWeights || ex.reps.map(() => null))]
-    };
-  });
-  try { localStorage.setItem('gym_exercise_cache', JSON.stringify(exerciseCache)); } catch(e) {}
-}
-
-function syncExercisesToOtherSplits() {
-  const allSplits = ['upper', 'lower', 'push', 'pull', 'legs'];
-  // Aktuelle Übungen in Speicher-Format umwandeln
-  const exMap = {};
-  exercises.forEach(ex => {
-    exMap[ex.name] = {
-      weight: ex.weight,
-      sets: ex.unilateral ? ex.reps.map(r => [r.l, r.r]) : [...ex.reps],
-      unilateral: ex.unilateral,
-      restSec: ex.restSec || DEFAULT_REST,
-      warmupSets: [...(ex.warmupSets || [])],
-      setWeights: [...(ex.setWeights || ex.reps.map(() => null))]
-    };
-  });
-  allSplits.filter(s => s !== currentSplit).forEach(split => {
-    try {
-      let data;
-      const raw = localStorage.getItem(`gym_${split}`);
-      if (raw) data = JSON.parse(raw);
-      else if (DEFAULT_DATA[split]) data = DEFAULT_DATA[split].map(ex => ({ ...ex }));
-      else return;
-      let changed = false;
-      data.forEach(ex => {
-        if (!(ex.name in exMap)) return;
-        const src = exMap[ex.name];
-        ex.weight = src.weight;
-        ex.sets = src.sets;
-        ex.unilateral = src.unilateral;
-        ex.restSec = src.restSec;
-        ex.warmupSets = src.warmupSets;
-        ex.setWeights = src.setWeights;
-        changed = true;
-      });
-      if (changed) {
-        localStorage.setItem(`gym_${split}`, JSON.stringify(data));
-        if (sb) sb.from('workouts').upsert({ id: `template_${split}`, data: JSON.stringify(data), updated_at: new Date().toISOString() }).catch(() => {});
-      }
-    } catch(e) {}
-  });
-}
 
 // ── Bodyweight tracking ──────────────────────────────────────────
 
@@ -1808,21 +1725,17 @@ function renderExerciseProgressBoard() {
   if (!el) return;
 
   const history = loadWorkoutHistory();
-  // Übungsnamen des aktuellen Splits als Referenz
-  const currentExNames = new Set(exercises.map(ex => ex.name));
-  // Alle Sessions aller Splits durchsuchen – gleiche Übungen werden zusammengeführt
+  const splitSessions = history.filter(h => h.split === currentSplit);
+  if (splitSessions.length < 2) {
+    el.innerHTML = `<div class="po-empty">Noch keine ${currentSplit.toUpperCase()}-Verlaufsdaten – mindestens 2 Workouts nötig</div>`;
+    return;
+  }
   const exMap = {};
-  for (const session of history) {
+  for (const session of splitSessions) {
     for (const ex of (session.exercises || [])) {
-      if (!currentExNames.has(ex.name)) continue;
       if (!exMap[ex.name]) exMap[ex.name] = [];
       exMap[ex.name].push({ date: session.date, weight: ex.weight, done: ex.done, total: ex.total });
     }
-  }
-  const hasData = Object.values(exMap).some(s => s.length >= 2);
-  if (!hasData) {
-    el.innerHTML = `<div class="po-empty">Noch keine Verlaufsdaten – mindestens 2 Workouts mit diesen Übungen nötig</div>`;
-    return;
   }
 
   const rows = Object.entries(exMap)
