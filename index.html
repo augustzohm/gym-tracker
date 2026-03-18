@@ -685,11 +685,14 @@ async function saveToCloud() {
   } catch(err) { showSync('saved', 'LOCAL ✓'); }
 }
 function debouncedSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToCloud, 800); }
+function sbFetch(promise, ms = 5000) {
+  return Promise.race([promise, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
+}
 async function loadFromCloud(split) {
   // Globale Übungstabelle aus Cloud holen (hat immer Vorrang)
   if (sb) {
     try {
-      const { data: geData } = await sb.from('workouts').select('data').eq('id', 'global_exercises').single();
+      const { data: geData } = await sbFetch(sb.from('workouts').select('data').eq('id', 'global_exercises').single());
       if (geData) {
         const cloudGE = JSON.parse(geData.data);
         // Per-Eintrag: neuerer Timestamp gewinnt — verhindert dass Cloud ältere Daten überschreibt
@@ -706,7 +709,7 @@ async function loadFromCloud(split) {
   // Split-Template laden (Namen-Liste oder altes Format)
   if (sb) {
     try {
-      const { data, error } = await sb.from('workouts').select('data').eq('id', `template_${split}`).single();
+      const { data, error } = await sbFetch(sb.from('workouts').select('data').eq('id', `template_${split}`).single());
       if (!error && data) return JSON.parse(data.data);
     } catch(e) {}
   }
