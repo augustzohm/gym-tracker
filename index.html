@@ -862,75 +862,79 @@ function hideLoading() {
 }
 
 async function init() {
-  // Sicherheitsnetz: Ladescreen spätestens nach 8s ausblenden
   const loadingTimeout = setTimeout(hideLoading, 8000);
   try {
     streakGoal = loadStreakGoal();
     globalExercises = loadGlobalExercises();
     prevSession = loadAllPrevSessions();
     prevExercise = loadPrevExercise();
-    // Bootstrap: Falls prevExercise noch leer ist, aus allen Splits von prevSession aufbauen
     if (Object.keys(prevExercise).length === 0 && Object.keys(prevSession).length > 0) {
       Object.values(prevSession).forEach(splitData => {
-        Object.entries(splitData).forEach(([name, data]) => {
-          prevExercise[name] = data;
-        });
+        Object.entries(splitData).forEach(([name, data]) => { prevExercise[name] = data; });
       });
       try { localStorage.setItem('gym_prev_exercise', JSON.stringify(prevExercise)); } catch(e) {}
     }
-    await loadExercises(currentSplit);
-    renderExercises();
-    setupEventListeners();
-    renderStreak();
-    renderHistory();
-    renderExerciseProgressBoard();
-    renderBodyWeight();
+    try { await loadExercises(currentSplit); } catch(e) { console.error('loadExercises:', e); exercises = buildDefaultExercises(currentSplit); }
+    try { renderExercises(); } catch(e) { console.error('renderExercises:', e); }
   } catch(e) { console.error('init error:', e); }
+  // Event-Listener IMMER registrieren, egal ob vorher Fehler
+  try { setupEventListeners(); } catch(e) { console.error('setupEventListeners:', e); }
+  try { renderStreak(); renderHistory(); renderExerciseProgressBoard(); renderBodyWeight(); } catch(e) {}
   clearTimeout(loadingTimeout);
   hideLoading();
-  syncFromCloud(); // Im Hintergrund mit Cloud synchronisieren
+  syncFromCloud();
+}
+
+function buildDefaultExercises(split) {
+  return (DEFAULT_DATA[split] || []).map(ex => ({
+    name: ex.name, weight: ex.weight, unilateral: ex.unilateral || false,
+    restSec: ex.restSec || DEFAULT_REST,
+    reps: (ex.sets || [8,8,8]).map(r => Array.isArray(r) ? { l: r[0]||8, r: r[1]||8 } : (r||8)),
+    completedSets: (ex.sets || [8,8,8]).map(() => false),
+    warmupSets: (ex.sets || [8,8,8]).map(() => false),
+    setWeights: (ex.sets || [8,8,8]).map(() => null)
+  }));
 }
 
 async function loadExercises(split) {
   const cd = await loadFromCloud(split);
   const src = cd || DEFAULT_DATA[split];
 
-  // Migration: altes Format (Array von Objekten) → globalExercises befüllen + Template auf Namen reduzieren
+  // Migration: altes Format (Array von Objekten) → globalExercises befüllen
   if (src.length > 0 && typeof src[0] === 'object' && src[0].name) {
     src.forEach(ex => {
       if (!globalExercises[ex.name]) {
+        const sets = ex.sets || [8, 8, 8];
         globalExercises[ex.name] = {
-          weight: ex.weight, sets: ex.sets, unilateral: ex.unilateral || false,
+          weight: ex.weight || 0, sets, unilateral: ex.unilateral || false,
           restSec: ex.restSec || DEFAULT_REST,
-          warmupSets: ex.warmupSets || ex.sets.map(() => false),
-          setWeights: ex.setWeights || ex.sets.map(() => null)
+          warmupSets: ex.warmupSets || sets.map(() => false),
+          setWeights: ex.setWeights || sets.map(() => null)
         };
       }
     });
     try { localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises)); } catch(e) {}
-    // Neues Template sofort speichern (nur Namen)
     const newTemplate = src.map(ex => ex.name);
     try { localStorage.setItem(`gym_${split}`, JSON.stringify(newTemplate)); } catch(e) {}
     if (sb) sb.from('workouts').upsert({ id: 'global_exercises', data: JSON.stringify(globalExercises), updated_at: new Date().toISOString() }).catch(() => {});
     if (sb) sb.from('workouts').upsert({ id: `template_${split}`, data: JSON.stringify(newTemplate), updated_at: new Date().toISOString() }).catch(() => {});
   }
 
-  // Namen-Liste aufbauen (neues oder altes Format)
   const names = src.map(item => typeof item === 'string' ? item : item.name);
 
   exercises = names.map(name => {
-    // Daten immer aus globalExercises holen (Single Source of Truth)
-    const ge = globalExercises[name] || DEFAULT_DATA[split]?.find(d => d.name === name) || { weight: 0, sets: [8, 8, 8], unilateral: false, restSec: DEFAULT_REST, warmupSets: [], setWeights: [] };
+    const ge = globalExercises[name] || DEFAULT_DATA[split]?.find(d => d.name === name) || { weight: 0, sets: [8,8,8], unilateral: false, restSec: DEFAULT_REST, warmupSets: [], setWeights: [] };
+    const sets = ge.sets || [8, 8, 8]; // defensiver Fallback falls sets fehlt
     const u = ge.unilateral || false;
-    let reps;
-    if (u) reps = ge.sets.map(s => Array.isArray(s) ? { l: s[0] || 8, r: s[1] || 8 } : { l: s || 8, r: s || 8 });
-    else reps = ge.sets.map(r => Array.isArray(r) ? r[0] : (r || 8));
+    const reps = u
+      ? sets.map(s => Array.isArray(s) ? { l: s[0]||8, r: s[1]||8 } : { l: s||8, r: s||8 })
+      : sets.map(r => Array.isArray(r) ? r[0] : (r||8));
     return {
-      name, weight: ge.weight, unilateral: u,
+      name, weight: ge.weight || 0, unilateral: u,
       restSec: ge.restSec || DEFAULT_REST, reps,
-      completedSets: ge.sets.map(() => false),
-      warmupSets: ge.sets.map((_, i) => (ge.warmupSets || [])[i] || false),
-      setWeights: ge.sets.map((_, i) => (ge.setWeights || [])[i] ?? null)
+      completedSets: sets.map(() => false),
+      warmupSets: sets.map((_, i) => (ge.warmupSets || [])[i] || false),
+      setWeights: sets.map((_, i) => (ge.setWeights || [])[i] ?? null)
     };
   });
 }
