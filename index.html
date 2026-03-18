@@ -600,6 +600,7 @@ let saveTimeout = null;
 let streakGoal = 4;
 let prevSession = {};       // { split: { exName: { weight, reps[] } } }
 let prevExercise = {};      // { exName: { weight, reps[] } } – übungsübergreifend, Split-unabhängig
+let globalExercises = {};   // { exName: { weight, sets, unilateral, restSec, warmupSets, setWeights } }
 let confirmCallback = null;
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -642,30 +643,67 @@ function svgSparkline(values, width, height, strokeColor, uid) {
 
 // ── Cloud sync ───────────────────────────────────────────────────
 
+function loadGlobalExercises() {
+  try {
+    const s = localStorage.getItem('gym_global_exercises');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return {};
+}
+
 function showSync(s, t) {
   const e = document.getElementById('syncIndicator');
   e.className = 'sync-indicator ' + s; e.textContent = t;
   if (s === 'saved') setTimeout(() => e.className = 'sync-indicator', 1500);
 }
 async function saveToCloud() {
-  const d = exercises.map(ex => ({
-    name: ex.name, weight: ex.weight,
-    sets: ex.unilateral ? ex.reps.map(r => [r.l, r.r]) : ex.reps,
-    unilateral: ex.unilateral, restSec: ex.restSec || DEFAULT_REST,
-    warmupSets: ex.warmupSets || [],
-    setWeights: ex.setWeights || ex.reps.map(() => null)
-  }));
-  try { localStorage.setItem(`gym_${currentSplit}`, JSON.stringify(d)); } catch(e) {}
+  const now = Date.now();
+  exercises.forEach(ex => {
+    globalExercises[ex.name] = {
+      weight: ex.weight,
+      sets: ex.unilateral ? ex.reps.map(r => [r.l, r.r]) : [...ex.reps],
+      unilateral: ex.unilateral,
+      restSec: ex.restSec || DEFAULT_REST,
+      warmupSets: [...(ex.warmupSets || [])],
+      setWeights: [...(ex.setWeights || ex.reps.map(() => null))],
+      savedAt: now
+    };
+  });
+  // Template speichert nur noch die Reihenfolge der Namen
+  const template = exercises.map(ex => ex.name);
+  try {
+    localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises));
+    localStorage.setItem(`gym_${currentSplit}`, JSON.stringify(template));
+  } catch(e) {}
   if (!sb) { showSync('saved', 'LOCAL ✓'); return; }
   showSync('saving', 'SYNC...');
   try {
-    const { error } = await sb.from('workouts').upsert({ id: `template_${currentSplit}`, data: JSON.stringify(d), updated_at: new Date().toISOString() });
+    await sb.from('workouts').upsert({ id: 'global_exercises', data: JSON.stringify(globalExercises), updated_at: new Date().toISOString() });
+    const { error } = await sb.from('workouts').upsert({ id: `template_${currentSplit}`, data: JSON.stringify(template), updated_at: new Date().toISOString() });
     if (error) throw error;
     showSync('saved', 'SAVED ✓');
   } catch(err) { showSync('saved', 'LOCAL ✓'); }
 }
 function debouncedSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToCloud, 800); }
 async function loadFromCloud(split) {
+  // Globale Übungstabelle aus Cloud holen (hat immer Vorrang)
+  if (sb) {
+    try {
+      const { data: geData } = await sb.from('workouts').select('data').eq('id', 'global_exercises').single();
+      if (geData) {
+        const cloudGE = JSON.parse(geData.data);
+        // Per-Eintrag: neuerer Timestamp gewinnt — verhindert dass Cloud ältere Daten überschreibt
+        for (const [name, cloudEx] of Object.entries(cloudGE)) {
+          const localEx = globalExercises[name];
+          if (!localEx || (cloudEx.savedAt || 0) > (localEx.savedAt || 0)) {
+            globalExercises[name] = cloudEx;
+          }
+        }
+        try { localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises)); } catch(e) {}
+      }
+    } catch(e) {}
+  }
+  // Split-Template laden (Namen-Liste oder altes Format)
   if (sb) {
     try {
       const { data, error } = await sb.from('workouts').select('data').eq('id', `template_${split}`).single();
@@ -791,6 +829,21 @@ async function syncFromCloud() {
     }
   } catch(e) {}
 
+  // ── Globale Übungstabelle (Single Source of Truth) ───────────
+  try {
+    const { data, error } = await sb.from('workouts').select('data').eq('id', 'global_exercises').single();
+    if (!error && data) {
+      const cloudGE = JSON.parse(data.data);
+      for (const [name, cloudEx] of Object.entries(cloudGE)) {
+        const localEx = globalExercises[name];
+        if (!localEx || (cloudEx.savedAt || 0) > (localEx.savedAt || 0)) {
+          globalExercises[name] = cloudEx;
+        }
+      }
+      try { localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises)); } catch(e) {}
+    }
+  } catch(e) {}
+
   if (changed) {
     renderHistory();
     renderExerciseProgressBoard();
@@ -802,6 +855,7 @@ async function syncFromCloud() {
 
 async function init() {
   streakGoal = loadStreakGoal();
+  globalExercises = loadGlobalExercises();
   prevSession = loadAllPrevSessions();
   prevExercise = loadPrevExercise();
   // Bootstrap: Falls prevExercise noch leer ist, aus allen Splits von prevSession aufbauen
@@ -827,17 +881,43 @@ async function init() {
 async function loadExercises(split) {
   const cd = await loadFromCloud(split);
   const src = cd || DEFAULT_DATA[split];
-  exercises = src.map(ex => {
-    const u = ex.unilateral || false;
+
+  // Migration: altes Format (Array von Objekten) → globalExercises befüllen + Template auf Namen reduzieren
+  if (src.length > 0 && typeof src[0] === 'object' && src[0].name) {
+    src.forEach(ex => {
+      if (!globalExercises[ex.name]) {
+        globalExercises[ex.name] = {
+          weight: ex.weight, sets: ex.sets, unilateral: ex.unilateral || false,
+          restSec: ex.restSec || DEFAULT_REST,
+          warmupSets: ex.warmupSets || ex.sets.map(() => false),
+          setWeights: ex.setWeights || ex.sets.map(() => null)
+        };
+      }
+    });
+    try { localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises)); } catch(e) {}
+    // Neues Template sofort speichern (nur Namen)
+    const newTemplate = src.map(ex => ex.name);
+    try { localStorage.setItem(`gym_${split}`, JSON.stringify(newTemplate)); } catch(e) {}
+    if (sb) sb.from('workouts').upsert({ id: 'global_exercises', data: JSON.stringify(globalExercises), updated_at: new Date().toISOString() }).catch(() => {});
+    if (sb) sb.from('workouts').upsert({ id: `template_${split}`, data: JSON.stringify(newTemplate), updated_at: new Date().toISOString() }).catch(() => {});
+  }
+
+  // Namen-Liste aufbauen (neues oder altes Format)
+  const names = src.map(item => typeof item === 'string' ? item : item.name);
+
+  exercises = names.map(name => {
+    // Daten immer aus globalExercises holen (Single Source of Truth)
+    const ge = globalExercises[name] || DEFAULT_DATA[split]?.find(d => d.name === name) || { weight: 0, sets: [8, 8, 8], unilateral: false, restSec: DEFAULT_REST, warmupSets: [], setWeights: [] };
+    const u = ge.unilateral || false;
     let reps;
-    if (u) reps = ex.sets.map(s => Array.isArray(s) ? { l: s[0] || 8, r: s[1] || 8 } : { l: s || 8, r: s || 8 });
-    else reps = ex.sets.map(r => Array.isArray(r) ? r[0] : (r || 8));
+    if (u) reps = ge.sets.map(s => Array.isArray(s) ? { l: s[0] || 8, r: s[1] || 8 } : { l: s || 8, r: s || 8 });
+    else reps = ge.sets.map(r => Array.isArray(r) ? r[0] : (r || 8));
     return {
-      name: ex.name, weight: ex.weight, unilateral: u,
-      restSec: ex.restSec || DEFAULT_REST, reps,
-      completedSets: ex.sets.map(() => false),
-      warmupSets: ex.sets.map((_, i) => (ex.warmupSets || [])[i] || false),
-      setWeights: ex.sets.map((_, i) => (ex.setWeights || [])[i] ?? null)
+      name, weight: ge.weight, unilateral: u,
+      restSec: ge.restSec || DEFAULT_REST, reps,
+      completedSets: ge.sets.map(() => false),
+      warmupSets: ge.sets.map((_, i) => (ge.warmupSets || [])[i] || false),
+      setWeights: ge.sets.map((_, i) => (ge.setWeights || [])[i] ?? null)
     };
   });
 }
@@ -1344,9 +1424,39 @@ async function switchSplit(s) {
   await _doSwitchSplit(s);
 }
 async function _doSwitchSplit(s) {
+  // Aktuellen Split sofort sichern BEVOR wir wechseln
+  clearTimeout(saveTimeout);
+  const now = Date.now();
+  const oldTemplate = exercises.map(ex => ex.name);
+  exercises.forEach(ex => {
+    globalExercises[ex.name] = {
+      weight: ex.weight,
+      sets: ex.unilateral ? ex.reps.map(r => [r.l, r.r]) : [...ex.reps],
+      unilateral: ex.unilateral,
+      restSec: ex.restSec || DEFAULT_REST,
+      warmupSets: [...(ex.warmupSets || [])],
+      setWeights: [...(ex.setWeights || ex.reps.map(() => null))],
+      savedAt: now
+    };
+  });
+  try {
+    localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises));
+    localStorage.setItem(`gym_${currentSplit}`, JSON.stringify(oldTemplate));
+  } catch(e) {}
+  // Cloud async speichern (fire-and-forget, blockiert den Split-Wechsel nicht)
+  if (sb) {
+    const geStr = JSON.stringify(globalExercises);
+    const tmplStr = JSON.stringify(oldTemplate);
+    const oldSplit = currentSplit;
+    Promise.all([
+      sb.from('workouts').upsert({ id: 'global_exercises', data: geStr, updated_at: new Date().toISOString() }),
+      sb.from('workouts').upsert({ id: `template_${oldSplit}`, data: tmplStr, updated_at: new Date().toISOString() })
+    ]).catch(() => {});
+  }
   currentSplit = s;
   document.querySelectorAll('.split-btn').forEach(b => b.classList.toggle('active', b.dataset.split === s));
-  await loadExercises(s); renderExercises();
+  await loadExercises(s);
+  renderExercises();
   renderExerciseProgressBoard();
 }
 
