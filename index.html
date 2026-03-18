@@ -856,28 +856,38 @@ async function syncFromCloud() {
 
 // ── Init ─────────────────────────────────────────────────────────
 
+function hideLoading() {
+  const el = document.getElementById('loadingScreen');
+  if (el) el.classList.add('hidden');
+}
+
 async function init() {
-  streakGoal = loadStreakGoal();
-  globalExercises = loadGlobalExercises();
-  prevSession = loadAllPrevSessions();
-  prevExercise = loadPrevExercise();
-  // Bootstrap: Falls prevExercise noch leer ist, aus allen Splits von prevSession aufbauen
-  if (Object.keys(prevExercise).length === 0 && Object.keys(prevSession).length > 0) {
-    Object.values(prevSession).forEach(splitData => {
-      Object.entries(splitData).forEach(([name, data]) => {
-        prevExercise[name] = data;
+  // Sicherheitsnetz: Ladescreen spätestens nach 8s ausblenden
+  const loadingTimeout = setTimeout(hideLoading, 8000);
+  try {
+    streakGoal = loadStreakGoal();
+    globalExercises = loadGlobalExercises();
+    prevSession = loadAllPrevSessions();
+    prevExercise = loadPrevExercise();
+    // Bootstrap: Falls prevExercise noch leer ist, aus allen Splits von prevSession aufbauen
+    if (Object.keys(prevExercise).length === 0 && Object.keys(prevSession).length > 0) {
+      Object.values(prevSession).forEach(splitData => {
+        Object.entries(splitData).forEach(([name, data]) => {
+          prevExercise[name] = data;
+        });
       });
-    });
-    try { localStorage.setItem('gym_prev_exercise', JSON.stringify(prevExercise)); } catch(e) {}
-  }
-  await loadExercises(currentSplit);
-  renderExercises();
-  setupEventListeners();
-  renderStreak();
-  renderHistory();
-  renderExerciseProgressBoard();
-  renderBodyWeight();
-  document.getElementById('loadingScreen').classList.add('hidden');
+      try { localStorage.setItem('gym_prev_exercise', JSON.stringify(prevExercise)); } catch(e) {}
+    }
+    await loadExercises(currentSplit);
+    renderExercises();
+    setupEventListeners();
+    renderStreak();
+    renderHistory();
+    renderExerciseProgressBoard();
+    renderBodyWeight();
+  } catch(e) { console.error('init error:', e); }
+  clearTimeout(loadingTimeout);
+  hideLoading();
   syncFromCloud(); // Im Hintergrund mit Cloud synchronisieren
 }
 
