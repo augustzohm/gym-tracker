@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>GYM</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -415,6 +415,19 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   border-color:var(--accent);
   color:var(--accent);
 }
+
+/* ── iOS Safe Area: Pausenscreen & Mini-Bar ─────────── */
+.rest-overlay{
+  /* Inhalt nicht hinter Notch/Home-Indicator schieben */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.rest-mini{
+  /* Eigener Compositor-Layer → kein Verrutschen beim Scrollen auf iOS */
+  will-change: transform;
+  /* Home-Indicator-Bereich freilassen */
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
 </style>
 </head>
 <body>
@@ -589,6 +602,7 @@ let restTimeLeft = 0, restStartTime = null, currentRestDuration = DEFAULT_REST, 
 let saveTimeout = null;
 let streakGoal = 4;
 let prevSession = {};       // { split: { exName: { weight, reps[] } } }
+let prevExercise = {};      // { exName: { weight, reps[] } } – übungsübergreifend, Split-unabhängig
 let confirmCallback = null;
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -631,9 +645,6 @@ function svgSparkline(values, width, height, strokeColor, uid) {
 
 // ── Cloud sync ───────────────────────────────────────────────────
 
-function requestNotif() {
-  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
-}
 function showSync(s, t) {
   const e = document.getElementById('syncIndicator');
   e.className = 'sync-indicator ' + s; e.textContent = t;
@@ -702,6 +713,11 @@ async function savePrevSessionToCloud() {
       id: 'prev_sessions', data: JSON.stringify(prevSession), updated_at: new Date().toISOString()
     });
   } catch(e) {}
+  try {
+    await sb.from('workouts').upsert({
+      id: 'prev_exercises', data: JSON.stringify(prevExercise), updated_at: new Date().toISOString()
+    });
+  } catch(e) {}
 }
 
 async function syncFromCloud() {
@@ -768,6 +784,16 @@ async function syncFromCloud() {
     }
   } catch(e) {}
 
+  // ── Globale Übungs-Map (Split-unabhängig) ────────────────────
+  try {
+    const { data, error } = await sb.from('workouts').select('data').eq('id', 'prev_exercises').single();
+    if (!error && data) {
+      const cloudEx = JSON.parse(data.data);
+      prevExercise = { ...prevExercise, ...cloudEx };
+      try { localStorage.setItem('gym_prev_exercise', JSON.stringify(prevExercise)); } catch(e) {}
+    }
+  } catch(e) {}
+
   if (changed) {
     renderHistory();
     renderExerciseProgressBoard();
@@ -780,6 +806,7 @@ async function syncFromCloud() {
 async function init() {
   streakGoal = loadStreakGoal();
   prevSession = loadAllPrevSessions();
+  prevExercise = loadPrevExercise();
   await loadExercises(currentSplit);
   renderExercises();
   setupEventListeners();
@@ -787,7 +814,6 @@ async function init() {
   renderHistory();
   renderExerciseProgressBoard();
   renderBodyWeight();
-  requestNotif();
   document.getElementById('loadingScreen').classList.add('hidden');
   syncFromCloud(); // Im Hintergrund mit Cloud synchronisieren
 }
@@ -814,7 +840,7 @@ async function loadExercises(split) {
 
 function getTrendBadge(xi) {
   const ex = exercises[xi];
-  const prev = prevSession[currentSplit]?.[ex.name];
+  const prev = prevExercise[ex.name] || prevSession[currentSplit]?.[ex.name];
   if (!prev) return '';
   const diff = +(ex.weight - prev.weight).toFixed(2);
   if (diff === 0) return '';
@@ -825,7 +851,7 @@ function getTrendBadge(xi) {
 }
 
 function getPrevRepsStr(exName, si, unilateral) {
-  const prev = prevSession[currentSplit]?.[exName]?.reps?.[si];
+  const prev = (prevExercise[exName] || prevSession[currentSplit]?.[exName])?.reps?.[si];
   if (prev === undefined) return '';
   if (unilateral && typeof prev === 'object') return `↩<span class="set-prev-val">${prev.l}/${prev.r}</span>`;
   return `↩<span class="set-prev-val">${prev}</span>`;
@@ -1230,7 +1256,7 @@ function cSet(xi, si) {
     row.classList.add('completed-set');
     const b = row.querySelector('.btn-complete-set');
     const isW = exercises[xi].warmupSets[si];
-    if (b) { b.textContent = isW ? 'WARM ✓' : 'DONE'; b.className = `btn-complete-set ${isW ? 'warmup-done' : 'done'}`; }
+    if (b) { b.textContent = isW ? 'WARM ✓' : 'FERTIG'; b.className = `btn-complete-set ${isW ? 'warmup-done' : 'done'}`; }
   }
   updHead(xi); debouncedSave();
   // No rest timer for warmup sets
@@ -1423,14 +1449,6 @@ function updateRD() {
     document.getElementById('restOverlay').classList.remove('visible');
     document.getElementById('restMini').classList.remove('visible');
     document.body.classList.remove('rest-locked'); restMinimized = false;
-    try { navigator.vibrate && navigator.vibrate([300,150,300,150,300]); } catch(e) {}
-    try {
-      const ac = new (window.AudioContext || window.webkitAudioContext)();
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.connect(g); g.connect(ac.destination); o.frequency.value = 880; g.gain.value = 0.3; o.start(); o.stop(ac.currentTime + 0.3);
-      setTimeout(() => { const o2 = ac.createOscillator(), g2 = ac.createGain(); o2.connect(g2); g2.connect(ac.destination); o2.frequency.value = 880; g2.gain.value = 0.3; o2.start(); o2.stop(ac.currentTime + 0.3); }, 500);
-    } catch(e) {}
-    try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Pause vorbei!', { body: 'Nächstes Set!', tag: 'gym-rest', renotify: true }); } catch(e) {}
   }
 }
 function minimizeRest() { restMinimized = true; document.getElementById('restOverlay').classList.remove('visible'); document.getElementById('restMini').classList.add('visible'); document.body.classList.remove('rest-locked'); }
@@ -1485,7 +1503,20 @@ function savePrevSession() {
   const all = loadAllPrevSessions();
   all[currentSplit] = snap;
   try { localStorage.setItem('gym_prev_session', JSON.stringify(all)); prevSession = all; } catch(e) {}
+  // Globale Übungs-Map aktualisieren (Split-unabhängig, letztes Training zählt)
+  const allEx = loadPrevExercise();
+  exercises.forEach(ex => {
+    const workingReps = ex.reps
+      .filter((_, i) => !ex.warmupSets[i])
+      .map(r => ex.unilateral ? { l: r.l, r: r.r } : r);
+    allEx[ex.name] = { weight: ex.weight, reps: workingReps };
+  });
+  try { localStorage.setItem('gym_prev_exercise', JSON.stringify(allEx)); prevExercise = allEx; } catch(e) {}
   savePrevSessionToCloud(); // Async fire-and-forget
+}
+
+function loadPrevExercise() {
+  try { return JSON.parse(localStorage.getItem('gym_prev_exercise') || '{}'); } catch(e) { return {}; }
 }
 
 // ── Bodyweight tracking ──────────────────────────────────────────
