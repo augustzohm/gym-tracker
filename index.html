@@ -667,7 +667,10 @@ async function saveToCloud() {
     showSync('saved', 'SAVED ✓');
   } catch(err) { showSync('saved', 'LOCAL ✓'); }
 }
-function debouncedSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToCloud, 800); }
+function debouncedSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => { saveToCloud(); syncExercisesToOtherSplits(); }, 800);
+}
 async function loadFromCloud(split) {
   if (sb) {
     try {
@@ -1391,7 +1394,7 @@ function stopWorkout(show = true) {
   restMinimized = false;
   if (show) {
     savePrevSession();
-    syncWeightsToOtherSplits();
+    syncExercisesToOtherSplits();
     saveWorkoutHistory();
     showSummary();
     logStreak();
@@ -1517,28 +1520,38 @@ function loadPrevExercise() {
   try { return JSON.parse(localStorage.getItem('gym_prev_exercise') || '{}'); } catch(e) { return {}; }
 }
 
-function syncWeightsToOtherSplits() {
+function syncExercisesToOtherSplits() {
   const allSplits = ['upper', 'lower', 'push', 'pull', 'legs'];
-  const weightMap = {};
-  exercises.forEach(ex => { weightMap[ex.name] = ex.weight; });
+  // Aktuelle Übungen in Speicher-Format umwandeln
+  const exMap = {};
+  exercises.forEach(ex => {
+    exMap[ex.name] = {
+      weight: ex.weight,
+      sets: ex.unilateral ? ex.reps.map(r => [r.l, r.r]) : [...ex.reps],
+      unilateral: ex.unilateral,
+      restSec: ex.restSec || DEFAULT_REST,
+      warmupSets: [...(ex.warmupSets || [])],
+      setWeights: [...(ex.setWeights || ex.reps.map(() => null))]
+    };
+  });
   allSplits.filter(s => s !== currentSplit).forEach(split => {
     try {
-      // localStorage nehmen, sonst DEFAULT_DATA als Basis
       let data;
       const raw = localStorage.getItem(`gym_${split}`);
-      if (raw) {
-        data = JSON.parse(raw);
-      } else if (DEFAULT_DATA[split]) {
-        data = DEFAULT_DATA[split].map(ex => ({ ...ex }));
-      } else {
-        return;
-      }
+      if (raw) data = JSON.parse(raw);
+      else if (DEFAULT_DATA[split]) data = DEFAULT_DATA[split].map(ex => ({ ...ex }));
+      else return;
       let changed = false;
       data.forEach(ex => {
-        if (ex.name in weightMap && ex.weight !== weightMap[ex.name]) {
-          ex.weight = weightMap[ex.name];
-          changed = true;
-        }
+        if (!(ex.name in exMap)) return;
+        const src = exMap[ex.name];
+        ex.weight = src.weight;
+        ex.sets = src.sets;
+        ex.unilateral = src.unilateral;
+        ex.restSec = src.restSec;
+        ex.warmupSets = src.warmupSets;
+        ex.setWeights = src.setWeights;
+        changed = true;
       });
       if (changed) {
         localStorage.setItem(`gym_${split}`, JSON.stringify(data));
@@ -1759,19 +1772,21 @@ function renderExerciseProgressBoard() {
   if (!el) return;
 
   const history = loadWorkoutHistory();
-  const splitSessions = history.filter(h => h.split === currentSplit);
-  if (splitSessions.length < 2) {
-    el.innerHTML = `<div class="po-empty">Noch keine ${currentSplit.toUpperCase()}-Verlaufsdaten – mindestens 2 Workouts nötig</div>`;
-    return;
-  }
-
-  // Sammle Gewichtsverlauf pro Übung – nur Sessions des aktuellen Splits
+  // Übungsnamen des aktuellen Splits als Referenz
+  const currentExNames = new Set(exercises.map(ex => ex.name));
+  // Alle Sessions aller Splits durchsuchen – gleiche Übungen werden zusammengeführt
   const exMap = {};
-  for (const session of splitSessions) {
+  for (const session of history) {
     for (const ex of (session.exercises || [])) {
+      if (!currentExNames.has(ex.name)) continue;
       if (!exMap[ex.name]) exMap[ex.name] = [];
       exMap[ex.name].push({ date: session.date, weight: ex.weight, done: ex.done, total: ex.total });
     }
+  }
+  const hasData = Object.values(exMap).some(s => s.length >= 2);
+  if (!hasData) {
+    el.innerHTML = `<div class="po-empty">Noch keine Verlaufsdaten – mindestens 2 Workouts mit diesen Übungen nötig</div>`;
+    return;
   }
 
   const rows = Object.entries(exMap)
