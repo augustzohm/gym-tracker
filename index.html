@@ -600,6 +600,7 @@ let saveTimeout = null;
 let streakGoal = 4;
 let prevSession = {};       // { split: { exName: { weight, reps[] } } }
 let prevExercise = {};      // { exName: { weight, reps[] } } – übungsübergreifend, Split-unabhängig
+let exerciseCache = {};     // { exName: vollständiger Zustand } – immer aktuell, Sync-Quelle
 let confirmCallback = null;
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -666,7 +667,7 @@ async function saveToCloud() {
 }
 function debouncedSave() {
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => { saveToCloud(); syncExercisesToOtherSplits(); }, 800);
+  saveTimeout = setTimeout(() => { updateExerciseCache(); saveToCloud(); syncExercisesToOtherSplits(); }, 800);
 }
 async function loadFromCloud(split) {
   if (sb) {
@@ -807,6 +808,7 @@ async function init() {
   streakGoal = loadStreakGoal();
   prevSession = loadAllPrevSessions();
   prevExercise = loadPrevExercise();
+  exerciseCache = loadExerciseCache();
   // Bootstrap: Falls prevExercise noch leer ist, aus allen Splits von prevSession aufbauen
   if (Object.keys(prevExercise).length === 0 && Object.keys(prevSession).length > 0) {
     Object.values(prevSession).forEach(splitData => {
@@ -842,6 +844,21 @@ async function loadExercises(split) {
       warmupSets: ex.sets.map((_, i) => (ex.warmupSets || [])[i] || false),
       setWeights: ex.sets.map((_, i) => (ex.setWeights || [])[i] ?? null)
     };
+  });
+  // Cache anwenden: überschreibt Cloud-Daten mit lokal bekanntem Zustand
+  exercises.forEach(ex => {
+    const c = exerciseCache[ex.name];
+    if (!c) return;
+    ex.weight = c.weight;
+    ex.restSec = c.restSec;
+    ex.unilateral = c.unilateral;
+    const u = c.unilateral;
+    ex.reps = u
+      ? c.sets.map(s => Array.isArray(s) ? { l: s[0] || 8, r: s[1] || 8 } : { l: s || 8, r: s || 8 })
+      : c.sets.map(r => Array.isArray(r) ? r[0] : (r || 8));
+    ex.warmupSets = [...c.warmupSets];
+    ex.setWeights = [...c.setWeights];
+    ex.completedSets = ex.reps.map(() => false);
   });
 }
 
@@ -1515,6 +1532,24 @@ function savePrevSession() {
 
 function loadPrevExercise() {
   try { return JSON.parse(localStorage.getItem('gym_prev_exercise') || '{}'); } catch(e) { return {}; }
+}
+
+function loadExerciseCache() {
+  try { return JSON.parse(localStorage.getItem('gym_exercise_cache') || '{}'); } catch(e) { return {}; }
+}
+
+function updateExerciseCache() {
+  exercises.forEach(ex => {
+    exerciseCache[ex.name] = {
+      weight: ex.weight,
+      sets: ex.unilateral ? ex.reps.map(r => [r.l, r.r]) : [...ex.reps],
+      unilateral: ex.unilateral,
+      restSec: ex.restSec || DEFAULT_REST,
+      warmupSets: [...(ex.warmupSets || [])],
+      setWeights: [...(ex.setWeights || ex.reps.map(() => null))]
+    };
+  });
+  try { localStorage.setItem('gym_exercise_cache', JSON.stringify(exerciseCache)); } catch(e) {}
 }
 
 function syncExercisesToOtherSplits() {
