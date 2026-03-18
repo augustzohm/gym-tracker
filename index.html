@@ -847,17 +847,6 @@ async function loadExercises(split) {
 
 // ── Render ───────────────────────────────────────────────────────
 
-function getTrendBadge(xi) {
-  const ex = exercises[xi];
-  const prev = prevExercise[ex.name] || prevSession[currentSplit]?.[ex.name];
-  if (!prev) return '';
-  const diff = +(ex.weight - prev.weight).toFixed(2);
-  if (diff === 0) return '';
-  const abs = Math.abs(diff), display = abs % 1 === 0 ? abs : abs.toFixed(1);
-  return diff > 0
-    ? `<span class="exercise-badge badge-trend-up">↑${display}</span>`
-    : `<span class="exercise-badge badge-trend-down">↓${display}</span>`;
-}
 
 function getPrevRepsStr(exName, si, unilateral) {
   const prev = (prevExercise[exName] || prevSession[currentSplit]?.[exName])?.reps?.[si];
@@ -875,7 +864,6 @@ function renderExercises() {
     const totalWorking = ex.completedSets.filter((_, i) => !ex.warmupSets[i]).length;
     const ad = totalWorking > 0 && cc === totalWorking;
     const ub = ex.unilateral ? '<span class="exercise-badge badge-uni">L/R</span>' : '';
-    const trend = getTrendBadge(xi);
 
     // Arbeitssatz-Index (zählt nur nicht-Warmup-Sets) für korrekte Beschriftung
     let workingCounter = 0;
@@ -952,7 +940,7 @@ function renderExercises() {
               <div class="exercise-name" onclick="event.stopPropagation();editName(${xi},this)">${ex.name}</div>
             </div>
             <div class="exercise-meta">
-              ${ub}${trend}
+              ${ub}
               <span class="exercise-badge badge-weight">${ex.weight} kg</span>
               <span class="rest-type-badge">${fmtRest(ex.restSec)}</span>
               <span class="exercise-badge badge-progress ${ad?'done':''}">${cc}/${totalWorking}</span>
@@ -1403,6 +1391,7 @@ function stopWorkout(show = true) {
   restMinimized = false;
   if (show) {
     savePrevSession();
+    syncWeightsToOtherSplits();
     saveWorkoutHistory();
     showSummary();
     logStreak();
@@ -1526,6 +1515,33 @@ function savePrevSession() {
 
 function loadPrevExercise() {
   try { return JSON.parse(localStorage.getItem('gym_prev_exercise') || '{}'); } catch(e) { return {}; }
+}
+
+function syncWeightsToOtherSplits() {
+  const allSplits = ['upper', 'lower', 'push', 'pull', 'legs'];
+  // Gewichts-Map der gerade absolvierten Übungen aufbauen
+  const weightMap = {};
+  exercises.forEach(ex => { weightMap[ex.name] = ex.weight; });
+  // Alle anderen Splits aktualisieren
+  allSplits.filter(s => s !== currentSplit).forEach(split => {
+    try {
+      const raw = localStorage.getItem(`gym_${split}`);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      let changed = false;
+      data.forEach(ex => {
+        if (ex.name in weightMap && ex.weight !== weightMap[ex.name]) {
+          ex.weight = weightMap[ex.name];
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(`gym_${split}`, JSON.stringify(data));
+        // Auch in die Cloud
+        if (sb) sb.from('workouts').upsert({ id: `template_${split}`, data: JSON.stringify(data), updated_at: new Date().toISOString() }).catch(() => {});
+      }
+    } catch(e) {}
+  });
 }
 
 // ── Bodyweight tracking ──────────────────────────────────────────
