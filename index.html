@@ -685,7 +685,7 @@ async function saveToCloud() {
   } catch(err) { showSync('saved', 'LOCAL ✓'); }
 }
 function debouncedSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToCloud, 800); }
-function sbFetch(promise, ms = 5000) {
+function sbFetch(promise, ms = 15000) {
   return Promise.race([promise, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
 }
 async function loadFromCloud(split) {
@@ -834,16 +834,23 @@ async function syncFromCloud() {
 
   // ── Globale Übungstabelle (Single Source of Truth) ───────────
   try {
-    const { data, error } = await sb.from('workouts').select('data').eq('id', 'global_exercises').single();
+    const { data, error } = await sbFetch(sb.from('workouts').select('data').eq('id', 'global_exercises').single());
     if (!error && data) {
       const cloudGE = JSON.parse(data.data);
+      let updated = false;
       for (const [name, cloudEx] of Object.entries(cloudGE)) {
         const localEx = globalExercises[name];
         if (!localEx || (cloudEx.savedAt || 0) > (localEx.savedAt || 0)) {
           globalExercises[name] = cloudEx;
+          updated = true;
         }
       }
-      try { localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises)); } catch(e) {}
+      if (updated) {
+        try { localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises)); } catch(e) {}
+        // Übungen im aktuellen Split neu laden falls Cloud frischere Daten hatte
+        try { await loadExercises(currentSplit); renderExercises(); } catch(e) {}
+        changed = true;
+      }
     }
   } catch(e) {}
 
@@ -862,7 +869,7 @@ function hideLoading() {
 }
 
 async function init() {
-  const loadingTimeout = setTimeout(hideLoading, 8000);
+  const loadingTimeout = setTimeout(hideLoading, 20000);
   try {
     streakGoal = loadStreakGoal();
     globalExercises = loadGlobalExercises();
