@@ -819,6 +819,8 @@ async function init() {
     try { localStorage.setItem('gym_prev_exercise', JSON.stringify(prevExercise)); } catch(e) {}
   }
   await loadExercises(currentSplit);
+  // Cache mit dem ersten geladenen Split befüllen falls noch leer
+  if (Object.keys(exerciseCache).length === 0) updateExerciseCache();
   renderExercises();
   setupEventListeners();
   renderStreak();
@@ -1364,6 +1366,8 @@ async function switchSplit(s) {
   await _doSwitchSplit(s);
 }
 async function _doSwitchSplit(s) {
+  // Cache sofort aktualisieren bevor der Split wechselt – nicht auf den 800ms-Debounce warten
+  updateExerciseCache();
   currentSplit = s;
   document.querySelectorAll('.split-btn').forEach(b => b.classList.toggle('active', b.dataset.split === s));
   await loadExercises(s); renderExercises();
