@@ -72,8 +72,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn-rest-action{padding:12px 28px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-secondary);font-family:'Outfit',sans-serif;font-size:.85rem;cursor:pointer;transition:all .3s}
 .btn-rest-action:hover{border-color:var(--accent);color:var(--accent)}
 .rest-mini{display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:var(--bg-card);border-top:2px solid var(--accent);padding:10px 16px;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
-.rest-mini.visible{display:flex;align-items:center;justify-content:space-between;animation:slideUpMini .3s ease}
-@keyframes slideUpMini{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.rest-mini.visible{display:flex;align-items:center;justify-content:space-between}
 .rest-mini-left{display:flex;align-items:center;gap:10px}
 .rest-mini-time{font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--accent)}
 .rest-mini-progress{width:80px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
@@ -101,8 +100,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .badge-progress{background:rgba(106,106,128,.15);color:var(--text-secondary)}
 .badge-progress.done{background:var(--success-dim);color:var(--success)}
 .badge-uni{background:var(--warn-dim);color:var(--warn);font-size:.6rem}
-.badge-trend-up{background:rgba(52,211,153,.15);color:var(--success)}
-.badge-trend-down{background:rgba(239,68,68,.12);color:var(--danger)}
 .rest-type-badge{font-family:'JetBrains Mono',monospace;font-size:.5rem;padding:2px 5px;border-radius:3px;background:rgba(107,138,253,.08);color:var(--text-muted)}
 .chevron{color:var(--text-muted);transition:transform .3s;font-size:.8rem;flex-shrink:0}
 .exercise-card.open .chevron{transform:rotate(180deg)}
@@ -1188,7 +1185,7 @@ function exitRestEditMode(confirm) {
   hint.style.display = 'none';
 }
 function aR(xi, si, d) {
-  exercises[xi].reps[si] = Math.max(0, exercises[xi].reps[si] + d);
+  exercises[xi].reps[si] = Math.max(1, exercises[xi].reps[si] + d);
   const rows = document.querySelectorAll('.swipe-wrapper')[xi].querySelectorAll('.set-swipe-wrapper');
   const inp = rows[si]?.querySelector('.reps-input');
   if (inp) inp.value = exercises[xi].reps[si];
@@ -1196,10 +1193,10 @@ function aR(xi, si, d) {
 }
 function sRD(xi, si, val) {
   const v = parseInt(val);
-  if (!isNaN(v) && v >= 0) { exercises[xi].reps[si] = v; debouncedSave(); }
+  if (!isNaN(v) && v >= 1) { exercises[xi].reps[si] = v; debouncedSave(); }
 }
 function aRU(xi, si, side, d) {
-  exercises[xi].reps[si][side] = Math.max(0, exercises[xi].reps[si][side] + d);
+  exercises[xi].reps[si][side] = Math.max(1, exercises[xi].reps[si][side] + d);
   const rows = document.querySelectorAll('.swipe-wrapper')[xi].querySelectorAll('.set-swipe-wrapper');
   const inps = rows[si]?.querySelectorAll('.reps-input');
   if (inps) {
@@ -1210,7 +1207,7 @@ function aRU(xi, si, side, d) {
 }
 function sRU(xi, si, side, val) {
   const v = parseInt(val);
-  if (!isNaN(v) && v >= 0) { exercises[xi].reps[si][side] = v; debouncedSave(); }
+  if (!isNaN(v) && v >= 1) { exercises[xi].reps[si][side] = v; debouncedSave(); }
 }
 
 // Toggle warmup status for a set
