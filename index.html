@@ -542,49 +542,50 @@ let sb; try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e)
 
 const DEFAULT_DATA = {
   upper:[
-    {name:"Flat Bench Press",weight:20,sets:[8,8],unilateral:false,restSec:150},
-    {name:"Lat Pulldown (wide)",weight:70,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Incline Dumbbell Press",weight:15,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Cable Row (close)",weight:62.5,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Cable Flys",weight:10,sets:[12,12],unilateral:false,restSec:90},
-    {name:"Lateral Raises",weight:6,sets:[[8,8],[8,8],[8,8],[8,8]],unilateral:true,restSec:90},
-    {name:"Overhead Triceps Ext.",weight:11.85,sets:[10,10],unilateral:false,restSec:90},
-    {name:"Triceps Pushdown",weight:20,sets:[10,10],unilateral:false,restSec:90},
+    {name:"Flachbankdrücken",weight:20,sets:[9,7,6],unilateral:false,restSec:150},
+    {name:"Lat Pulldown (weit)",weight:70,sets:[8,8,6],unilateral:false,restSec:150},
+    {name:"Schrägbank KH 30°",weight:18,sets:[8,9,7],unilateral:false,restSec:150},
+    {name:"Kabelrudern (eng)",weight:62.5,sets:[10,9,7],unilateral:false,restSec:150},
+    {name:"Cable Flys",weight:72.5,sets:[7,5],unilateral:false,restSec:90},
+    {name:"Lateral Raises",weight:6,sets:[[10,10],[8,8],[7,6]],unilateral:true,restSec:90},
+    {name:"Overhead Trizeps Ext.",weight:13.75,sets:[9,8],unilateral:false,restSec:90},
     {name:"Face Pulls",weight:15,sets:[15,15],unilateral:false,restSec:60}
   ],
   lower:[
-    {name:"Leg Press",weight:75,sets:[10,9,9],unilateral:false,restSec:150},
-    {name:"Romanian Deadlift",weight:40,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Leg Extension",weight:82.5,sets:[10,10,10],unilateral:false,restSec:90},
-    {name:"Seated Leg Curl",weight:77.5,sets:[10,10,10],unilateral:false,restSec:90},
-    {name:"Preacher Curls",weight:30,sets:[8,8,8],unilateral:false,restSec:90},
-    {name:"Hammer Curls",weight:10,sets:[8,8],unilateral:false,restSec:90},
-    {name:"Cable Crunches",weight:25,sets:[12,12,12],unilateral:false,restSec:90}
+    {name:"Rumänisches Kreuzheben",weight:40,sets:[8,8,8],unilateral:false,restSec:150},
+    {name:"Beinpresse / Hack Squat",weight:77.5,sets:[8,9,6],unilateral:false,restSec:150},
+    {name:"Leg Extension",weight:82.5,sets:[9,10,9],unilateral:false,restSec:90},
+    {name:"Seated Leg Curl",weight:80,sets:[7,6,5],unilateral:false,restSec:90},
+    {name:"Incline Curls",weight:51,sets:[10,8,6],unilateral:false,restSec:90},
+    {name:"Reverse Curls",weight:0,sets:[10,10],unilateral:false,restSec:90},
+    {name:"Hanging Leg Raises",weight:0,sets:[10,7,6],unilateral:false,restSec:90}
   ],
   push:[
-    {name:"Shoulder Press",weight:12,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Incline Dumbbell Press",weight:15,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Cable Flys",weight:10,sets:[12,12],unilateral:false,restSec:90},
-    {name:"Lateral Raises",weight:6,sets:[[8,8],[8,8],[8,8],[8,8],[8,8]],unilateral:true,restSec:90},
-    {name:"Overhead Triceps Ext.",weight:11.85,sets:[10,10,10],unilateral:false,restSec:90},
-    {name:"Triceps Pushdown",weight:20,sets:[10,10],unilateral:false,restSec:90},
+    {name:"Schulterdrücken",weight:35,sets:[8,9,8],unilateral:false,restSec:150},
+    {name:"Schrägbank KH 30°",weight:18,sets:[8,9,7],unilateral:false,restSec:150},
+    {name:"Cable Flys",weight:72.5,sets:[7,5],unilateral:false,restSec:90},
+    {name:"Lateral Raises",weight:6,sets:[[10,10],[8,8],[7,6]],unilateral:true,restSec:90},
+    {name:"Overhead Trizeps Ext.",weight:13.75,sets:[9,8],unilateral:false,restSec:90},
+    {name:"Triceps Pushdown",weight:77.5,sets:[9,6],unilateral:false,restSec:90},
     {name:"Face Pulls",weight:15,sets:[15,15],unilateral:false,restSec:60}
   ],
   pull:[
-    {name:"Cable Row (wide)",weight:60,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Lat Pulldown (close)",weight:65,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Straight Arm Pulldown",weight:25,sets:[12,12],unilateral:false,restSec:90},
-    {name:"Face Pulls",weight:15,sets:[15,15],unilateral:false,restSec:60},
-    {name:"Preacher Curls",weight:30,sets:[8,8,8],unilateral:false,restSec:90},
-    {name:"Reverse Curls",weight:15,sets:[10,10],unilateral:false,restSec:90}
+    {name:"Lat Pulldown (eng)",weight:72.5,sets:[8,7,5],unilateral:false,restSec:150},
+    {name:"Kabelrudern (breit)",weight:60,sets:[10,7,8],unilateral:false,restSec:150},
+    {name:"Incline Curls",weight:51,sets:[10,8,6],unilateral:false,restSec:90},
+    {name:"Preacher Curls",weight:53,sets:[8,6,6],unilateral:false,restSec:120},
+    {name:"Hammer Curls",weight:12,sets:[10,11,6],unilateral:false,restSec:120},
+    {name:"Reverse Curls",weight:0,sets:[10,10],unilateral:false,restSec:90},
+    {name:"Face Pulls",weight:15,sets:[15,15],unilateral:false,restSec:60}
   ],
   legs:[
-    {name:"Leg Press",weight:75,sets:[10,10,10],unilateral:false,restSec:150},
-    {name:"Romanian Deadlift",weight:40,sets:[8,8,8],unilateral:false,restSec:150},
-    {name:"Leg Extension",weight:82.5,sets:[10,10,10],unilateral:false,restSec:90},
-    {name:"Seated Leg Curl",weight:77.5,sets:[10,10,10],unilateral:false,restSec:90},
-    {name:"Hanging Leg Raises",weight:0,sets:[12,12],unilateral:false,restSec:90},
-    {name:"Cable Crunches",weight:25,sets:[12,12,12],unilateral:false,restSec:90}
+    {name:"Rumänisches Kreuzheben",weight:40,sets:[8,8,8],unilateral:false,restSec:150},
+    {name:"Beinpresse / Hack Squat",weight:77.5,sets:[8,9,6],unilateral:false,restSec:150},
+    {name:"Leg Extension",weight:82.5,sets:[9,10,9],unilateral:false,restSec:90},
+    {name:"Seated Leg Curl",weight:80,sets:[7,6,5],unilateral:false,restSec:90},
+    {name:"Hanging Leg Raises",weight:0,sets:[10,7,6],unilateral:false,restSec:90},
+    {name:"Leg Raises",weight:0,sets:[9,8,6],unilateral:false,restSec:120},
+    {name:"Crunches",weight:30,sets:[8,8,8],unilateral:false,restSec:120}
   ]
 };
 
@@ -847,8 +848,10 @@ async function syncFromCloud() {
       }
       if (updated) {
         try { localStorage.setItem('gym_global_exercises', JSON.stringify(globalExercises)); } catch(e) {}
-        // Übungen im aktuellen Split neu laden falls Cloud frischere Daten hatte
-        try { await loadExercises(currentSplit); renderExercises(); } catch(e) {}
+        // Während Workout NICHT neu laden – sonst wird completedSets zurückgesetzt
+        if (!workoutActive) {
+          try { await loadExercises(currentSplit); renderExercises(); } catch(e) {}
+        }
         changed = true;
       }
     }
@@ -1601,7 +1604,24 @@ function confirmAdd() {
   const w = parseFloat(document.getElementById('inputExWeight').value) || 0;
   const s = parseInt(document.getElementById('inputExSets').value) || 3;
   if (!n) { document.getElementById('inputExName').focus(); return; }
-  exercises.push({ name: n, weight: w, unilateral: false, restSec: DEFAULT_REST, reps: Array(s).fill(8), completedSets: Array(s).fill(false), warmupSets: Array(s).fill(false), setWeights: Array(s).fill(null) });
+  // Wenn Übung in globalExercises existiert → deren Daten übernehmen (Split-Sync)
+  const ge = globalExercises[n];
+  if (ge) {
+    const sets = ge.sets || Array(s).fill(8);
+    const u = ge.unilateral || false;
+    const reps = u
+      ? sets.map(v => Array.isArray(v) ? { l: v[0]||8, r: v[1]||8 } : { l: v||8, r: v||8 })
+      : sets.map(r => Array.isArray(r) ? r[0] : (r||8));
+    exercises.push({
+      name: n, weight: ge.weight || 0, unilateral: u,
+      restSec: ge.restSec || DEFAULT_REST, reps,
+      completedSets: sets.map(() => false),
+      warmupSets: sets.map((_, i) => (ge.warmupSets || [])[i] || false),
+      setWeights: sets.map((_, i) => (ge.setWeights || [])[i] ?? null)
+    });
+  } else {
+    exercises.push({ name: n, weight: w, unilateral: false, restSec: DEFAULT_REST, reps: Array(s).fill(8), completedSets: Array(s).fill(false), warmupSets: Array(s).fill(false), setWeights: Array(s).fill(null) });
+  }
   closeModal(); renderExercises(); debouncedSave();
 }
 function showConfirm(msg, cb, icon = '⚠️') {
