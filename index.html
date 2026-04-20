@@ -45,17 +45,22 @@ h1{font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:12px;letter-
 .ex-name:focus{outline:none;color:#fff}
 .ex-del{background:none;border:none;color:#666;font-size:1.3rem;cursor:pointer;padding:0 2px;line-height:1}
 .ex-del:active{color:#bbb}
-.ex-fields{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.ex-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
 .field{display:flex;flex-direction:column;gap:2px}
 .field label{font-size:0.6rem;text-transform:uppercase;color:#999;letter-spacing:0.06em;font-weight:500}
 .field input{background:#1a1a1a;border:1px solid #444;border-radius:6px;color:#eee;font-size:0.9rem;padding:8px 6px;font-family:inherit;width:100%;text-align:center}
 .field input:focus{outline:none;border-color:#777;color:#fff}
 
-/* Checkboxes */
-.ex-sets{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* Sets */
+.ex-sets{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.set-group{display:flex;flex-direction:column;align-items:center;gap:4px}
+.set-label{font-size:0.55rem;text-transform:uppercase;color:#666;font-weight:500;letter-spacing:0.04em}
 .set-cb{-webkit-appearance:none;appearance:none;width:42px;height:42px;border:2px solid #555;border-radius:8px;background:#1a1a1a;cursor:pointer;position:relative;flex-shrink:0}
 .set-cb:checked{background:#fff;border-color:#fff}
 .set-cb:checked::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#000;font-size:1.2rem;font-weight:700}
+.set-reps{width:42px;background:#1a1a1a;border:1px solid #444;border-radius:6px;color:#eee;font-size:0.85rem;padding:5px 2px;font-family:inherit;text-align:center}
+.set-reps:focus{outline:none;border-color:#777;color:#fff}
+.set-reps::placeholder{color:#555}
 .set-btns{display:flex;gap:4px;margin-left:auto}
 .set-btn{background:#1a1a1a;border:1px solid #555;color:#bbb;width:32px;height:32px;border-radius:6px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
 .set-btn:active{background:#333;color:#fff}
@@ -98,29 +103,29 @@ const KD = K+'_data', KT = K+'_tab', KC = K+'_checks', KS = K+'_session', KH = K
 // ── Default Data ──
 const DEFAULTS = {
   push: [
-    {name:'Incline DB Bench',kg:'24',sets:3,reps:'6-9',pause:'120'},
-    {name:'Machine Flys',kg:'80',sets:3,reps:'8-12',pause:'90'},
-    {name:'Shoulder Press',kg:'35',sets:3,reps:'6-9',pause:'120'},
-    {name:'Cable Lateral Raise (unilateral)',kg:'5',sets:3,reps:'10-15',pause:'60'},
-    {name:'Overhead Triceps Extension',kg:'16.25',sets:3,reps:'8-12',pause:'90'},
-    {name:'Triceps Pushdown',kg:'80',sets:3,reps:'10-15',pause:'60'}
+    {name:'Incline DB Bench',kg:'24',sets:3,pause:'120'},
+    {name:'Machine Flys',kg:'80',sets:3,pause:'90'},
+    {name:'Shoulder Press',kg:'35',sets:3,pause:'120'},
+    {name:'Cable Lateral Raise (unilateral)',kg:'5',sets:3,pause:'60'},
+    {name:'Overhead Triceps Extension',kg:'16.25',sets:3,pause:'90'},
+    {name:'Triceps Pushdown',kg:'80',sets:3,pause:'60'}
   ],
   pull: [
-    {name:'Pull-ups',kg:'BW',sets:3,reps:'max',pause:'120'},
-    {name:'Lat Pulldown weit',kg:'72.5',sets:3,reps:'8-12',pause:'90'},
-    {name:'Kabelrudern eng',kg:'65',sets:3,reps:'6-10',pause:'120'},
-    {name:'Low Rows',kg:'32.5',sets:3,reps:'8-12',pause:'90'},
-    {name:'Face Pulls',kg:'16.25',sets:3,reps:'12-15',pause:'60'},
-    {name:'Preacher Curls',kg:'55.5',sets:3,reps:'8-12',pause:'90'},
-    {name:'Hammer Curls',kg:'12',sets:3,reps:'10-15',pause:'60'}
+    {name:'Pull-ups',kg:'BW',sets:3,pause:'120'},
+    {name:'Lat Pulldown weit',kg:'72.5',sets:3,pause:'90'},
+    {name:'Kabelrudern eng',kg:'65',sets:3,pause:'120'},
+    {name:'Low Rows',kg:'32.5',sets:3,pause:'90'},
+    {name:'Face Pulls',kg:'16.25',sets:3,pause:'60'},
+    {name:'Preacher Curls',kg:'55.5',sets:3,pause:'90'},
+    {name:'Hammer Curls',kg:'12',sets:3,pause:'60'}
   ],
   legs: [
-    {name:'Beinpresse',kg:'77.5',sets:3,reps:'8-12',pause:'120'},
-    {name:'Romanian Deadlifts',kg:'40',sets:3,reps:'6-10',pause:'120'},
-    {name:'Leg Extensions',kg:'82.5',sets:3,reps:'10-15',pause:'90'},
-    {name:'Seated Leg Curl',kg:'80',sets:3,reps:'10-15',pause:'90'},
-    {name:'Hanging Leg Raises',kg:'-',sets:3,reps:'max',pause:'60'},
-    {name:'Crunches',kg:'-',sets:3,reps:'max',pause:'60'}
+    {name:'Beinpresse',kg:'77.5',sets:3,pause:'120'},
+    {name:'Romanian Deadlifts',kg:'40',sets:3,pause:'120'},
+    {name:'Leg Extensions',kg:'82.5',sets:3,pause:'90'},
+    {name:'Seated Leg Curl',kg:'80',sets:3,pause:'90'},
+    {name:'Hanging Leg Raises',kg:'-',sets:3,pause:'60'},
+    {name:'Crunches',kg:'-',sets:3,pause:'60'}
   ]
 };
 
@@ -147,7 +152,7 @@ function saveHistory() { saveJSON(KH, history); }
 function saveSession(v) { sessionInfo = v; if (v) saveJSON(KS, v); else localStorage.removeItem(KS); }
 function saveTimer(v) { timerInfo = v; if (v) saveJSON(KR, v); else localStorage.removeItem(KR); }
 
-// Ensure checks arrays match exercise counts
+// Ensure checks arrays match exercise counts, using {done, reps} objects
 function syncChecks(dayId) {
   if (!checks[dayId]) checks[dayId] = [];
   const exs = data[dayId];
@@ -156,7 +161,13 @@ function syncChecks(dayId) {
   for (let i = 0; i < exs.length; i++) {
     if (!Array.isArray(checks[dayId][i])) checks[dayId][i] = [];
     const s = exs[i].sets;
-    while (checks[dayId][i].length < s) checks[dayId][i].push(false);
+    // Migrate old boolean format to {done, reps}
+    for (let j = 0; j < checks[dayId][i].length; j++) {
+      const v = checks[dayId][i][j];
+      if (typeof v === 'boolean') checks[dayId][i][j] = { done: v, reps: '' };
+      if (!v || typeof v !== 'object') checks[dayId][i][j] = { done: false, reps: '' };
+    }
+    while (checks[dayId][i].length < s) checks[dayId][i].push({ done: false, reps: '' });
     checks[dayId][i].length = s;
   }
 }
@@ -489,7 +500,6 @@ function render() {
     const fieldDefs = [
       ['kg', 'Gewicht', ex.kg, 'text'],
       ['sets', 'Sätze', ex.sets, 'number'],
-      ['reps', 'Wdh', ex.reps, 'text'],
       ['pause', 'Pause (s)', ex.pause, 'text']
     ];
 
@@ -534,7 +544,7 @@ function render() {
   addBtn.className = 'add-btn';
   addBtn.textContent = '+ Übung hinzufügen';
   addBtn.onclick = () => {
-    data[dayId].push({ name: 'Neue Übung', kg: '0', sets: 3, reps: '8-12', pause: '90' });
+    data[dayId].push({ name: 'Neue Übung', kg: '0', sets: 3, pause: '90' });
     syncChecks(dayId);
     saveData(); saveChecks(); render();
   };
@@ -545,7 +555,7 @@ function render() {
   resetBtn.className = 'reset-btn';
   resetBtn.textContent = 'Tag zurücksetzen';
   resetBtn.onclick = () => {
-    checks[dayId] = data[dayId].map(ex => new Array(ex.sets).fill(false));
+    checks[dayId] = data[dayId].map(ex => Array.from({length: ex.sets}, () => ({done: false, reps: ''})));
     saveChecks(); render();
   };
   exList.appendChild(resetBtn);
@@ -556,23 +566,44 @@ function render() {
 function renderSets(container, dayId, exIdx, ex) {
   container.innerHTML = '';
   for (let s = 0; s < ex.sets; s++) {
+    const group = document.createElement('div');
+    group.className = 'set-group';
+
+    const label = document.createElement('span');
+    label.className = 'set-label';
+    label.textContent = 'S' + (s + 1);
+    group.appendChild(label);
+
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'set-cb';
-    cb.checked = checks[dayId][exIdx] && checks[dayId][exIdx][s];
+    const setData = checks[dayId][exIdx] && checks[dayId][exIdx][s];
+    cb.checked = setData && setData.done;
     cb.onchange = () => {
-      // Ensure audio context for timer beep
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
-
-      checks[dayId][exIdx][s] = cb.checked;
+      checks[dayId][exIdx][s].done = cb.checked;
       saveChecks();
       if (cb.checked) {
         const pauseSec = parseInt(ex.pause) || 60;
         timerStart(pauseSec, ex.name);
       }
     };
-    container.appendChild(cb);
+    group.appendChild(cb);
+
+    const repsInp = document.createElement('input');
+    repsInp.type = 'text';
+    repsInp.inputMode = 'numeric';
+    repsInp.className = 'set-reps';
+    repsInp.placeholder = 'Wdh';
+    repsInp.value = (setData && setData.reps) || '';
+    repsInp.oninput = () => {
+      checks[dayId][exIdx][s].reps = repsInp.value;
+      saveChecks();
+    };
+    group.appendChild(repsInp);
+
+    container.appendChild(group);
   }
 
   // +/- set buttons
