@@ -61,6 +61,9 @@ h1{font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:12px;letter-
 .set-reps{width:42px;background:#1a1a1a;border:1px solid #444;border-radius:6px;color:#eee;font-size:0.85rem;padding:5px 2px;font-family:inherit;text-align:center}
 .set-reps:focus{outline:none;border-color:#777;color:#fff}
 .set-reps::placeholder{color:#555}
+.set-kg{width:42px;background:#0f0f0f;border:1px solid #333;border-radius:6px;color:#bbb;font-size:0.7rem;padding:4px 2px;font-family:inherit;text-align:center}
+.set-kg:focus{outline:none;border-color:#777;color:#fff}
+.set-kg::placeholder{color:#444}
 .set-btns{display:flex;gap:4px;margin-left:auto}
 .set-btn{background:#1a1a1a;border:1px solid #555;color:#bbb;width:32px;height:32px;border-radius:6px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
 .set-btn:active{background:#333;color:#fff}
@@ -164,10 +167,11 @@ function syncChecks(dayId) {
     // Migrate old boolean format to {done, reps}
     for (let j = 0; j < checks[dayId][i].length; j++) {
       const v = checks[dayId][i][j];
-      if (typeof v === 'boolean') checks[dayId][i][j] = { done: v, reps: '' };
-      if (!v || typeof v !== 'object') checks[dayId][i][j] = { done: false, reps: '' };
+      if (typeof v === 'boolean') checks[dayId][i][j] = { done: v, reps: '', kg: '' };
+      else if (!v || typeof v !== 'object') checks[dayId][i][j] = { done: false, reps: '', kg: '' };
+      else if (!('kg' in v)) v.kg = '';
     }
-    while (checks[dayId][i].length < s) checks[dayId][i].push({ done: false, reps: '' });
+    while (checks[dayId][i].length < s) checks[dayId][i].push({ done: false, reps: '', kg: '' });
     checks[dayId][i].length = s;
   }
 }
@@ -555,7 +559,7 @@ function render() {
   resetBtn.className = 'reset-btn';
   resetBtn.textContent = 'Tag zurücksetzen';
   resetBtn.onclick = () => {
-    checks[dayId] = data[dayId].map(ex => Array.from({length: ex.sets}, () => ({done: false, reps: ''})));
+    checks[dayId] = data[dayId].map(ex => Array.from({length: ex.sets}, () => ({done: false, reps: '', kg: ''})));
     saveChecks(); render();
   };
   exList.appendChild(resetBtn);
@@ -572,24 +576,13 @@ function renderSets(container, dayId, exIdx, ex) {
     const label = document.createElement('span');
     label.className = 'set-label';
     label.textContent = 'S' + (s + 1);
-    group.appendChild(label);
+
+    const setData = checks[dayId][exIdx] && checks[dayId][exIdx][s];
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'set-cb';
-    const setData = checks[dayId][exIdx] && checks[dayId][exIdx][s];
     cb.checked = setData && setData.done;
-    cb.onchange = () => {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      checks[dayId][exIdx][s].done = cb.checked;
-      saveChecks();
-      if (cb.checked) {
-        const pauseSec = parseInt(ex.pause) || 60;
-        timerStart(pauseSec, ex.name);
-      }
-    };
-    group.appendChild(cb);
 
     const repsInp = document.createElement('input');
     repsInp.type = 'text';
@@ -597,12 +590,57 @@ function renderSets(container, dayId, exIdx, ex) {
     repsInp.className = 'set-reps';
     repsInp.placeholder = 'Wdh';
     repsInp.value = (setData && setData.reps) || '';
+
+    const kgInp = document.createElement('input');
+    kgInp.type = 'text';
+    kgInp.inputMode = 'decimal';
+    kgInp.className = 'set-kg';
+    kgInp.placeholder = ex.kg || 'kg';
+    kgInp.value = (setData && setData.kg) || '';
+
+    let awaitingTimer = false;
+    const startPendingTimer = () => {
+      if (!awaitingTimer) return;
+      awaitingTimer = false;
+      const pauseSec = parseInt(ex.pause) || 60;
+      timerStart(pauseSec, ex.name);
+    };
+
+    cb.onchange = () => {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      checks[dayId][exIdx][s].done = cb.checked;
+      saveChecks();
+      if (cb.checked) {
+        awaitingTimer = true;
+        repsInp.focus();
+        repsInp.select();
+      } else {
+        awaitingTimer = false;
+      }
+    };
+
     repsInp.oninput = () => {
       checks[dayId][exIdx][s].reps = repsInp.value;
       saveChecks();
     };
-    group.appendChild(repsInp);
+    repsInp.addEventListener('blur', startPendingTimer);
+    repsInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        repsInp.blur();
+      }
+    });
 
+    kgInp.oninput = () => {
+      checks[dayId][exIdx][s].kg = kgInp.value;
+      saveChecks();
+    };
+
+    group.appendChild(label);
+    group.appendChild(cb);
+    group.appendChild(repsInp);
+    group.appendChild(kgInp);
     container.appendChild(group);
   }
 
