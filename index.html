@@ -32,7 +32,8 @@ h1{font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:12px;letter-
 .session-btn{background:#fff;color:#000;border:none;padding:12px 28px;border-radius:10px;font-size:0.95rem;font-weight:600;font-family:inherit;cursor:pointer}
 .session-btn.running{background:#444;color:#fff}
 .session-clock{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;margin-top:8px}
-.session-history{margin-top:10px;font-size:0.75rem;color:#999;line-height:1.8}
+.session-history{margin:24px 16px 8px;font-size:0.75rem;color:#999;line-height:1.8;text-align:center}
+.session-history-title{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#666;margin-bottom:6px;font-weight:600}
 
 /* Exercises */
 .exercises{padding:8px 12px}
@@ -448,14 +449,6 @@ function render() {
     sessionDiv.appendChild(clock);
   }
 
-  // History
-  if (history[dayId] && history[dayId].length > 0) {
-    const hist = document.createElement('div');
-    hist.className = 'session-history';
-    hist.innerHTML = history[dayId].map(h => `${h.date} – ${formatDuration(h.duration)}`).join('<br>');
-    sessionDiv.appendChild(hist);
-  }
-
   main.appendChild(sessionDiv);
 
   // Exercise list
@@ -526,6 +519,11 @@ function render() {
         } else {
           ex[key] = inp.value;
           saveData();
+          if (key === 'kg') {
+            for (const kgEl of setsRow.querySelectorAll('.set-kg')) {
+              kgEl.placeholder = ex.kg || 'kg';
+            }
+          }
         }
       };
       f.appendChild(l);
@@ -559,12 +557,23 @@ function render() {
   resetBtn.className = 'reset-btn';
   resetBtn.textContent = 'Tag zurücksetzen';
   resetBtn.onclick = () => {
-    checks[dayId] = data[dayId].map(ex => Array.from({length: ex.sets}, () => ({done: false, reps: '', kg: ''})));
+    for (const setArr of checks[dayId]) {
+      for (const setObj of setArr) setObj.done = false;
+    }
     saveChecks(); render();
   };
   exList.appendChild(resetBtn);
 
   main.appendChild(exList);
+
+  // History (am Seitenende)
+  if (history[dayId] && history[dayId].length > 0) {
+    const hist = document.createElement('div');
+    hist.className = 'session-history';
+    hist.innerHTML = '<div class="session-history-title">Letzte Workouts</div>' +
+      history[dayId].map(h => `${h.date} – ${formatDuration(h.duration)}`).join('<br>');
+    main.appendChild(hist);
+  }
 }
 
 function renderSets(container, dayId, exIdx, ex) {
