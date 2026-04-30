@@ -103,33 +103,37 @@ h1{font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:12px;letter-
 // ── Storage Keys ──
 const K = 'tp7';
 const KD = K+'_data', KT = K+'_tab', KC = K+'_checks', KS = K+'_session', KH = K+'_history', KR = K+'_timer';
+const KV = K+'_planv';
+const PLAN_VERSION = 2;
 
 // ── Default Data ──
 const DEFAULTS = {
   push: [
-    {name:'Incline DB Bench',kg:'24',sets:3,pause:'120'},
-    {name:'Machine Flys',kg:'80',sets:3,pause:'90'},
-    {name:'Shoulder Press',kg:'35',sets:3,pause:'120'},
-    {name:'Cable Lateral Raise (unilateral)',kg:'5',sets:3,pause:'60'},
-    {name:'Overhead Triceps Extension',kg:'16.25',sets:3,pause:'90'},
-    {name:'Triceps Pushdown',kg:'80',sets:3,pause:'60'}
+    {name:'Incline DB Bench',kg:'24',sets:3,pause:'150'},
+    {name:'Incline Cable Fly',kg:'15',sets:3,pause:'90'},
+    {name:'Shoulder Press',kg:'35',sets:3,pause:'135'},
+    {name:'Cable Lateral Raise (unilateral)',kg:'5',sets:3,pause:'105'},
+    {name:'Overhead Triceps Extension',kg:'16.25',sets:3,pause:'105'},
+    {name:'Triceps Pushdown',kg:'80',sets:3,pause:'75'}
   ],
   pull: [
-    {name:'Pull-ups',kg:'BW',sets:3,pause:'120'},
-    {name:'Lat Pulldown weit',kg:'72.5',sets:3,pause:'90'},
-    {name:'Kabelrudern eng',kg:'65',sets:3,pause:'120'},
-    {name:'Low Rows',kg:'32.5',sets:3,pause:'90'},
-    {name:'Face Pulls',kg:'16.25',sets:3,pause:'60'},
-    {name:'Preacher Curls',kg:'55.5',sets:3,pause:'90'},
-    {name:'Hammer Curls',kg:'12',sets:3,pause:'60'}
+    {name:'Pull-ups',kg:'BW',sets:3,pause:'150'},
+    {name:'Lat Pulldown weit',kg:'72.5',sets:3,pause:'120'},
+    {name:'Low Rows',kg:'32.5',sets:3,pause:'120'},
+    {name:'Straight Arm Pulldown',kg:'25',sets:3,pause:'90'},
+    {name:'Reverse Pec Deck',kg:'30',sets:3,pause:'90'},
+    {name:'Lateral Raises',kg:'4.5',sets:3,pause:'105'},
+    {name:'Preacher Curls',kg:'55.5',sets:3,pause:'105'},
+    {name:'Hammer Curls',kg:'12',sets:3,pause:'90'}
   ],
   legs: [
-    {name:'Beinpresse',kg:'77.5',sets:3,pause:'120'},
-    {name:'Romanian Deadlifts',kg:'40',sets:3,pause:'120'},
-    {name:'Leg Extensions',kg:'82.5',sets:3,pause:'90'},
-    {name:'Seated Leg Curl',kg:'80',sets:3,pause:'90'},
+    {name:'Beinpresse',kg:'77.5',sets:3,pause:'180'},
+    {name:'Romanian Deadlifts',kg:'40',sets:3,pause:'180'},
+    {name:'Leg Extensions',kg:'82.5',sets:3,pause:'105'},
+    {name:'Seated Leg Curl',kg:'80',sets:3,pause:'105'},
+    {name:'Lateral Raises',kg:'4.5',sets:3,pause:'105'},
     {name:'Hanging Leg Raises',kg:'-',sets:3,pause:'60'},
-    {name:'Crunches',kg:'-',sets:3,pause:'60'}
+    {name:'Crunches',kg:'-',sets:3,pause:'45'}
   ]
 };
 
@@ -149,6 +153,21 @@ let checks = loadJSON(KC, { push: [], pull: [], legs: [] });
 let history = loadJSON(KH, { push: [], pull: [], legs: [] });
 let sessionInfo = loadJSON(KS, null);
 let timerInfo = loadJSON(KR, null);
+
+// Plan-Migration: bei neuer PLAN_VERSION werden die Übungen auf die neuen DEFAULTS
+// upgedatet. History (KH) und Sessiondaten (KS) bleiben erhalten, nur die laufenden
+// Set-Checks (KC) werden geleert, weil sich die Übungs-Struktur ändert.
+const currentPlanVersion = parseInt(localStorage.getItem(KV)) || 1;
+if (currentPlanVersion < PLAN_VERSION) {
+  data = JSON.parse(JSON.stringify(DEFAULTS));
+  for (const day of ['push','pull','legs']) {
+    for (const ex of data[day]) { ex.sets = parseInt(ex.sets) || 3; }
+  }
+  saveJSON(KD, data);
+  checks = { push: [], pull: [], legs: [] };
+  saveJSON(KC, checks);
+  localStorage.setItem(KV, String(PLAN_VERSION));
+}
 
 function saveData() { saveJSON(KD, data); }
 function saveChecks() { saveJSON(KC, checks); }
